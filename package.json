@@ -1,0 +1,13 @@
+{
+  "name": "lyrian-chronicles-static-manual",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/scrape-and-build.mjs --build-only",
+    "refresh": "node scripts/scrape-and-build.mjs",
+    "preview": "python3 -m http.server 4173 --directory public"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
