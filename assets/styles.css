@@ -183,6 +183,19 @@ button, input, select { font: inherit; }
   .ayra-chat { right: 10px; bottom: 10px; }
   .ayra-chat-toggle { min-width: 0; grid-template-columns: 38px 1fr 8px; }
   .ayra-chat-panel { position: fixed; inset: 0; width: auto; height: 100dvh; border: 0; border-radius: 0; }
+  .ayra-chat-composer {
+    padding: 14px 12px 11px;
+    background: #202225;
+    border-top: 1px solid #111216;
+    box-shadow: 0 -8px 22px rgb(0 0 0 / 22%);
+  }
+  .ayra-chat-composer::before {
+    inset: 14px 12px 11px;
+    border: 1px solid #4e5058;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 18%);
+  }
+  .ayra-chat-composer textarea { min-height: 48px; padding-block: 13px; }
+  .ayra-chat-composer > button { width: 48px; }
   .ayra-chat-welcome { padding: 26px 22px; }
   .ayra-chat-wake { padding: 30px 22px; }
   .ayra-chat-welcome h2 { font-size: 40px; }
