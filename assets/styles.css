@@ -168,8 +168,9 @@ button, input, select { font: inherit; }
 .ayra-chat-composer textarea { min-height: 42px; border: 0; border-radius: 8px 0 0 8px; padding: 11px 12px; color: #dbdee1; background: transparent; font: 16px/1.4 Arial, sans-serif; }
 .ayra-chat-composer textarea::placeholder { color: #949ba4; }
 .ayra-chat-composer textarea:focus { box-shadow: none; }
-.ayra-chat-composer > button { width: 42px; border-radius: 0 8px 8px 0; color: #b5bac1; background: transparent; font-size: 18px; }
-.ayra-chat-composer > button:hover:not(:disabled), .ayra-chat-composer > button:focus-visible { color: white; background: #4e5058; }
+.ayra-chat-composer > button { width: 42px; border-radius: 0 8px 8px 0; color: white; background: #5865f2; font-size: 18px; }
+.ayra-chat-composer > button:hover:not(:disabled), .ayra-chat-composer > button:focus-visible { color: white; background: #4752c4; }
+.ayra-chat-composer > button:disabled { color: #949ba4; background: transparent; }
 .ayra-chat-disclosure { position: relative; z-index: 1; min-height: 34px; padding: 7px 12px 9px; color: #949ba4; background: var(--discord-deep); font: 9px/1.35 Arial, sans-serif; }
 .ayra-chat-disclosure span { color: #dbdee1; }
 @keyframes ayra-thinking { 0%, 60%, 100% { opacity: .35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
