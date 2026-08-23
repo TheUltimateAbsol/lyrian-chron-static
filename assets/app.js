@@ -46,19 +46,21 @@
     const documentRoot = document.querySelector(".document");
     if (!wanted || !documentRoot) return;
     const expression = new RegExp(wanted.split(" ").map(escapeExpression).join("\\s+"), "i");
-    // Numeric SHOW_TEXT keeps this working in constrained embedded browsers
-    // which expose TreeWalker but not the NodeFilter global.
-    const walker = document.createTreeWalker(documentRoot, 4);
-    let node;
-    while ((node = walker.nextNode())) {
-      const match = node.data.match(expression);
+    const candidates = [...documentRoot.querySelectorAll("p, li, td, th, blockquote")];
+    for (const element of candidates) {
+      const match = element.textContent.match(expression);
       if (!match) continue;
+      // Do not flatten an element containing links or other markup. The
+      // fallback still places the reader at the correct passage in that case.
+      if (element.children.length) break;
       const mark = document.createElement("mark");
       mark.className = "source-text-citation";
-      const after = node.splitText(match.index + match[0].length);
-      const selected = node.splitText(match.index);
-      mark.textContent = selected.data;
-      selected.replaceWith(mark);
+      mark.textContent = match[0];
+      element.replaceChildren(
+        element.ownerDocument.createTextNode(element.textContent.slice(0, match.index)),
+        mark,
+        element.ownerDocument.createTextNode(element.textContent.slice(match.index + match[0].length)),
+      );
       mark.scrollIntoView({ block: "center", behavior: "auto" });
       return;
     }
