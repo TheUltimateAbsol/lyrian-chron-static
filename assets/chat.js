@@ -243,7 +243,9 @@
     const remoteMessages = Array.isArray(data.messages) ? data.messages.filter(message =>
       ["user", "assistant"].includes(message?.role) && typeof message.text === "string"
     ).slice(-MAX_MESSAGES) : [];
-    if (remoteMessages.length || !sending) messages = remoteMessages.map(message => ({ ...message, timestamp: message.createdAt }));
+    if (remoteMessages.length || !sending) messages = remoteMessages
+      .filter(message => message.kind !== "progress" || message.text.trim())
+      .map(message => ({ ...message, timestamp: message.createdAt }));
     const nextFinalAt = Math.max(0, ...remoteMessages
       .filter(message => message.role === "assistant" && message.kind === "final")
       .map(message => Number(message.createdAt) || 0));
