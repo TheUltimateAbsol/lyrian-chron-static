@@ -254,7 +254,7 @@
     sessionPending = latest?.role === "assistant" && latest.kind === "progress";
     renderMessages();
     updateComposer();
-    if (!sessionPending) stopPolling();
+    if (!sessionPending && !sending) stopPolling();
     if (receivedNewFinal) playIncomingSound();
   };
   const pollSession = () => syncSession().catch(() => {});
@@ -358,7 +358,6 @@
     updateComposer();
     try {
       const headers = { "content-type": "application/json", ...sessionHeaders() };
-      startPolling();
       const response = await fetch(`${config.apiUrl}/chat`, {
         method: "POST",
         headers,
@@ -368,6 +367,7 @@
       if (response.status === 401 && authRequired) { setAuth(null); renderAccount(); }
       if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
       await syncSession();
+      if (sessionPending) startPolling();
     } catch (error) {
       messages.push({ role: "assistant", kind: "error", text: error.message || "couldn't reach it. try again.", timestamp: Date.now() });
       renderMessages();
