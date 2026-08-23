@@ -990,6 +990,15 @@ body[data-section="basic-actions"] input[type="number"] { font: 750 16px/1 var(-
 @keyframes source-target-flash {
   50% { background: #ffd32a; box-shadow: inset 7px 0 0 var(--ink); }
 }
+.source-text-citation {
+  padding: .06em .12em; color: inherit; background: #ffd32a; border-radius: .18em;
+  box-decoration-break: clone; -webkit-box-decoration-break: clone;
+  box-shadow: 0 0 0 2px rgb(255 211 42 / 38%);
+}
+.source-text-citation-fallback {
+  margin-inline: -12px; padding: 6px 12px; background: #fff1aa;
+  border-radius: 4px; box-shadow: inset 5px 0 0 var(--gold-dark);
+}
 .document h2:empty,
 .document h3:empty,
 .document h4:empty,

@@ -37,6 +37,40 @@
   addEventListener("hashchange", revealHashTarget);
   if (location.hash) requestAnimationFrame(revealHashTarget);
 
+  const citation = params.get("cite");
+  const normalizeCitation = value => String(value || "").replace(/\s+/g, " ").trim().toLocaleLowerCase();
+  const escapeExpression = value => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const revealCitation = () => {
+    if (!citation) return;
+    const wanted = normalizeCitation(citation);
+    const documentRoot = document.querySelector(".document");
+    if (!wanted || !documentRoot) return;
+    const expression = new RegExp(wanted.split(" ").map(escapeExpression).join("\\s+"), "i");
+    const walker = document.createTreeWalker(documentRoot, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const match = node.data.match(expression);
+      if (!match) continue;
+      const mark = document.createElement("mark");
+      mark.className = "source-text-citation";
+      const after = node.splitText(match.index + match[0].length);
+      const selected = node.splitText(match.index);
+      mark.textContent = selected.data;
+      selected.replaceWith(mark);
+      mark.scrollIntoView({ block: "center", behavior: "auto" });
+      return;
+    }
+    // Preserve a useful visual cue if typography or whitespace has changed
+    // enough that the exact passage cannot be wrapped.
+    const fallback = [...documentRoot.querySelectorAll("p, li, td, blockquote")]
+      .find(element => normalizeCitation(element.textContent).includes(wanted));
+    if (fallback) {
+      fallback.classList.add("source-text-citation-fallback");
+      fallback.scrollIntoView({ block: "center", behavior: "auto" });
+    }
+  };
+  if (citation) setTimeout(revealCitation, 30);
+
   const navToggle = document.querySelector(".nav-toggle");
   const sidebar = document.querySelector(".site-sidebar");
   const sidebarClose = document.querySelector(".sidebar-close");
