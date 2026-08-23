@@ -217,9 +217,15 @@
     article.append(avatar, content);
     return article;
   };
+  const createTypingIndicator = () => {
+    const indicator = document.createElement("div");
+    indicator.className = "ayra-typing-indicator";
+    indicator.innerHTML = '<span class="ayra-thinking" aria-label="Aira is thinking"><i></i><i></i><i></i></span><span>Aira is thinking…</span>';
+    return indicator;
+  };
   const renderMessages = () => {
     const rendered = messages.map(createMessage);
-    if (sending || sessionPending) rendered.push(createMessage({ role: "assistant", pending: true }));
+    if (sending || sessionPending) rendered.push(createTypingIndicator());
     messageList.replaceChildren(...rendered);
     const waking = wakeState === "waking";
     wakeScreen.hidden = !waking;
@@ -244,7 +250,7 @@
       ["user", "assistant"].includes(message?.role) && typeof message.text === "string"
     ).slice(-MAX_MESSAGES) : [];
     if (remoteMessages.length || !sending) messages = remoteMessages
-      .filter(message => message.kind !== "progress" || message.text.trim())
+      .filter(message => message.text.trim())
       .map(message => ({ ...message, timestamp: message.createdAt }));
     const nextFinalAt = Math.max(0, ...remoteMessages
       .filter(message => message.role === "assistant" && message.kind === "final")
@@ -253,7 +259,7 @@
     latestFinalAt = Math.max(latestFinalAt, nextFinalAt);
     sessionSyncedOnce = true;
     const latest = remoteMessages.at(-1);
-    sessionPending = latest?.role === "assistant" && latest.kind === "progress";
+    sessionPending = latest?.role === "assistant" && ["pending", "progress"].includes(latest.kind);
     renderMessages();
     updateComposer();
     if (!sessionPending && !sending) stopPolling();
