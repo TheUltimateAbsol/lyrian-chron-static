@@ -218,7 +218,9 @@
     return article;
   };
   const renderMessages = () => {
-    messageList.replaceChildren(...messages.map(createMessage));
+    const rendered = messages.map(createMessage);
+    if (sending || sessionPending) rendered.push(createMessage({ role: "assistant", pending: true }));
+    messageList.replaceChildren(...rendered);
     const waking = wakeState === "waking";
     wakeScreen.hidden = !waking;
     welcome.hidden = waking || messages.length > 0;
