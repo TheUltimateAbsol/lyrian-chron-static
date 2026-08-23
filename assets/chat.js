@@ -3,7 +3,7 @@
   if (!config.apiUrl || !config.fullInterface || document.querySelector(".ayra-chat")) return;
 
   const AUTH_KEY = "ayra-auth";
-  const HISTORY_KEY = "ayra-chat-history-v1";
+  const SESSION_KEY = "ayra-chat-session-v1";
   const OPEN_KEY = "ayra-chat-open";
   const MAX_MESSAGES = 30;
   const authRequired = config.requireDiscordAuth === true;
@@ -17,9 +17,12 @@
   };
   const getAuth = () => readJson(sessionStorage, AUTH_KEY, null);
   const setAuth = auth => auth ? sessionStorage.setItem(AUTH_KEY, JSON.stringify(auth)) : sessionStorage.removeItem(AUTH_KEY);
-  let messages = readJson(localStorage, HISTORY_KEY, []).filter(message =>
-    ["user", "assistant"].includes(message?.role) && typeof message.text === "string"
-  ).slice(-MAX_MESSAGES);
+  const newSessionId = () => crypto.randomUUID();
+  let sessionId = localStorage.getItem(SESSION_KEY) || newSessionId();
+  localStorage.setItem(SESSION_KEY, sessionId);
+  let messages = [];
+  let sessionPending = false;
+  let pollTimer;
 
   const shell = document.createElement("section");
   shell.className = "ayra-chat ayra-chat-full";
@@ -41,7 +44,7 @@
       <div class="ayra-chat-scroll" data-chat-scroll>
         <section class="ayra-chat-wake" data-chat-wake hidden aria-live="polite">
           <span class="ayra-wake-ring" aria-hidden="true"></span>
-          <div><strong>Waking up…</strong><p>First response may take 5–15 seconds. A researched answer can take up to a minute.</p></div>
+          <div><strong>Waking up…</strong><p>First response may take 5–15 seconds. A researched answer can take several minutes; Ayra will leave progress updates here while it works.</p></div>
         </section>
         <section class="ayra-chat-welcome" data-chat-welcome>
           <p class="ayra-kicker">Rules & rulings</p>
@@ -87,7 +90,6 @@
   const status = shell.querySelector("[data-chat-status]");
   const presenceIndicators = [...shell.querySelectorAll("[data-chat-presence]")];
 
-  const saveMessages = () => localStorage.setItem(HISTORY_KEY, JSON.stringify(messages.slice(-MAX_MESSAGES)));
   const setStatus = (text, state = "idle") => {
     status.textContent = text;
     shell.dataset.state = state;
@@ -178,9 +180,9 @@
     if (Number.isNaN(date.valueOf())) return "now";
     return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(date);
   };
-  const createMessage = ({ role, text, timestamp, pending = false, error = false }) => {
+  const createMessage = ({ role, text, timestamp, kind = "final", pending = false, error = false }) => {
     const article = document.createElement("article");
-    article.className = `ayra-message ayra-message-${role}${pending ? " is-pending" : ""}${error ? " is-error" : ""}`;
+    article.className = `ayra-message ayra-message-${role}${pending ? " is-pending" : ""}${kind === "progress" ? " is-progress" : ""}${error || kind === "error" ? " is-error" : ""}`;
     const avatar = document.createElement("div");
     avatar.className = "ayra-message-avatar";
     if (role === "assistant") {
@@ -221,15 +223,34 @@
     messageList.hidden = waking;
     scroll.scrollTop = scroll.scrollHeight;
   };
-  const historyPairs = source => {
-    const pairs = [];
-    for (let index = 0; index < source.length; index += 1) {
-      if (source[index].role === "user" && source[index + 1]?.role === "assistant") {
-        pairs.push({ user: source[index].text, assistant: source[index + 1].text });
-        index += 1;
-      }
-    }
-    return pairs.slice(-8);
+  const sessionHeaders = () => {
+    const auth = getAuth();
+    return auth?.token ? { authorization: `Bearer ${auth.token}` } : {};
+  };
+  const syncSession = async () => {
+    const response = await fetch(`${config.apiUrl}/chat/session?session_id=${encodeURIComponent(sessionId)}`, { headers: sessionHeaders(), cache: "no-store" });
+    if (!response.ok) throw new Error(`Chat sync failed (${response.status})`);
+    const data = await response.json();
+    const remoteMessages = Array.isArray(data.messages) ? data.messages.filter(message =>
+      ["user", "assistant"].includes(message?.role) && typeof message.text === "string"
+    ).slice(-MAX_MESSAGES) : [];
+    if (remoteMessages.length || !sending) messages = remoteMessages.map(message => ({ ...message, timestamp: message.createdAt }));
+    const latest = remoteMessages.at(-1);
+    sessionPending = latest?.role === "assistant" && latest.kind === "progress";
+    renderMessages();
+    updateComposer();
+    if (!sessionPending) stopPolling();
+  };
+  const pollSession = () => syncSession().catch(() => {});
+  const startPolling = () => {
+    if (pollTimer) return;
+    pollSession();
+    pollTimer = setInterval(pollSession, 2_500);
+  };
+  const stopPolling = () => {
+    if (!pollTimer) return;
+    clearInterval(pollTimer);
+    pollTimer = undefined;
   };
   const updateComposer = () => {
     const signedIn = Boolean(getAuth()?.token);
@@ -237,10 +258,11 @@
     const canChat = hasAccess && wakeState !== "waking";
     signin.hidden = !authRequired || signedIn;
     form.classList.toggle("is-locked", !canChat);
-    input.disabled = !canChat || sending;
-    sendButton.disabled = !canChat || sending || !input.value.trim();
+    input.disabled = !canChat || sending || sessionPending;
+    sendButton.disabled = !canChat || sending || sessionPending || !input.value.trim();
     if (wakeState === "waking") setStatus("Waking up…", "working");
     else if (!hasAccess) setStatus("Sign in to ask", "locked");
+    else if (sending || sessionPending) setStatus("Ayra is researching…", "working");
     else if (!sending) setStatus(wakeState === "awake" ? "Active" : "Offline", wakeState === "awake" ? "ready" : "locked");
   };
   const renderAccount = () => {
@@ -309,40 +331,33 @@
     const auth = getAuth();
     const text = String(question || "").trim();
     if (authRequired && !auth?.token) return beginLogin();
-    if (!text || sending || wakeState === "waking") return;
-    const prior = historyPairs(messages);
+    if (!text || sending || sessionPending || wakeState === "waking") return;
     messages.push({ role: "user", text, timestamp: Date.now() });
     messages = messages.slice(-MAX_MESSAGES);
-    saveMessages();
     renderMessages();
-    const pending = createMessage({ role: "assistant", pending: true });
-    messageList.append(pending);
-    scroll.scrollTop = scroll.scrollHeight;
     input.value = "";
     input.style.height = "";
     sending = true;
     setStatus("Searching rules…", "working");
     updateComposer();
     try {
-      const headers = { "content-type": "application/json" };
-      if (auth?.token) headers.authorization = `Bearer ${auth.token}`;
+      const headers = { "content-type": "application/json", ...sessionHeaders() };
+      startPolling();
       const response = await fetch(`${config.apiUrl}/chat`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ message: text, history: prior }),
+        body: JSON.stringify({ message: text, sessionId }),
       });
       const data = await response.json().catch(() => ({}));
       if (response.status === 401 && authRequired) { setAuth(null); renderAccount(); }
       if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
-      messages.push({ role: "assistant", text: data.answer || "yea. got nothing.", timestamp: Date.now() });
-      messages = messages.slice(-MAX_MESSAGES);
-      saveMessages();
-      renderMessages();
+      await syncSession();
       const sound = new Audio(incomingSoundUrl);
       sound.volume = 0.3;
       sound.play().catch(() => {});
     } catch (error) {
-      pending.replaceWith(createMessage({ role: "assistant", text: error.message || "couldn't reach it. try again.", error: true }));
+      messages.push({ role: "assistant", kind: "error", text: error.message || "couldn't reach it. try again.", timestamp: Date.now() });
+      renderMessages();
     } finally {
       sending = false;
       updateComposer();
@@ -354,7 +369,10 @@
   shell.querySelector("[data-chat-close]").addEventListener("click", () => { setOpen(false); toggle.focus(); });
   shell.querySelector("[data-chat-new]").addEventListener("click", () => {
     messages = [];
-    localStorage.removeItem(HISTORY_KEY);
+    sessionPending = false;
+    stopPolling();
+    sessionId = newSessionId();
+    localStorage.setItem(SESSION_KEY, sessionId);
     renderMessages();
     input.focus();
   });
@@ -387,6 +405,8 @@
   document.addEventListener("keydown", event => {
     if (event.key === "Escape" && !panel.hidden) { setOpen(false); toggle.focus(); }
   });
+
+  syncSession().then(() => { if (sessionPending) startPolling(); }).catch(() => {});
 
   renderMessages();
   renderAccount();

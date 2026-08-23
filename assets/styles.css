@@ -156,6 +156,7 @@ button, input, select { font: inherit; }
 .ayra-message-body a, .ayra-message-user .ayra-message-body a { color: var(--discord-link); font-weight: 400; }
 .ayra-message-body code { color: #f2f3f5; background: #1e1f22; }
 .ayra-message.is-error .ayra-message-body { color: #ffb3ba; background: transparent; border: 0; }
+.ayra-message.is-progress .ayra-message-body { color: #b5bac1; font-style: italic; }
 .ayra-thinking i { background: #b5bac1; }
 .ayra-chat-signin { background: var(--discord-panel); border-top-color: #202225; }
 .ayra-chat-composer { position: relative; z-index: 1; gap: 0; padding: 0 12px 10px; background: var(--discord-bg); border-top: 0; border-radius: 0; }
