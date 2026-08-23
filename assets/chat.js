@@ -7,7 +7,7 @@
   const OPEN_KEY = "ayra-chat-open";
   const MAX_MESSAGES = 30;
   const authRequired = config.requireDiscordAuth === true;
-  const avatarUrl = "https://cdn.discordapp.com/avatars/158177570200879104/efece9480009519f569271198fff5bed.webp?size=2048";
+  const avatarUrl = "/assets/ayra-avatar.webp";
   const incomingSoundUrl = "/assets/discord-message.mp3";
   let sending = false;
   let wakeState = "idle";
