@@ -160,7 +160,7 @@ button, input, select { font: inherit; }
 .ayra-message-body code { color: #f2f3f5; background: #1e1f22; }
 .ayra-message.is-error .ayra-message-body { color: #ffb3ba; background: transparent; border: 0; }
 .ayra-message.is-progress .ayra-message-body { color: #b5bac1; font-style: italic; }
-.ayra-typing-bar { display: flex; flex: 0 0 24px; gap: 5px; align-items: center; padding: 0 16px 4px; color: var(--discord-muted); background: var(--discord-bg); font: 11px/1 Arial, sans-serif; }
+.ayra-typing-bar { display: flex; flex: 0 0 28px; gap: 5px; align-items: center; padding: 0 16px 4px; color: var(--discord-muted); background: var(--discord-panel); border-top: 1px solid #202225; font: 11px/1 Arial, sans-serif; }
 .ayra-typing-bar .ayra-thinking { gap: 3px; height: 12px; padding-top: 1px; }
 .ayra-typing-bar .ayra-thinking i { width: 4px; height: 4px; }
 .ayra-thinking i { background: #b5bac1; }
