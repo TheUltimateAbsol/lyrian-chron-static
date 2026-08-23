@@ -46,7 +46,9 @@
     const documentRoot = document.querySelector(".document");
     if (!wanted || !documentRoot) return;
     const expression = new RegExp(wanted.split(" ").map(escapeExpression).join("\\s+"), "i");
-    const walker = document.createTreeWalker(documentRoot, NodeFilter.SHOW_TEXT);
+    // Numeric SHOW_TEXT keeps this working in constrained embedded browsers
+    // which expose TreeWalker but not the NodeFilter global.
+    const walker = document.createTreeWalker(documentRoot, 4);
     let node;
     while ((node = walker.nextNode())) {
       const match = node.data.match(expression);
