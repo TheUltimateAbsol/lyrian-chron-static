@@ -1,4 +1,15 @@
 (() => {
+  const chatConfig = window.AYRA_CHAT_CONFIG || {};
+  const oauthHash = new URLSearchParams(location.hash.slice(1));
+  if (oauthHash.has("ayra_token")) {
+    const auth = { token: oauthHash.get("ayra_token"), user: oauthHash.get("ayra_user") || "Discord user" };
+    sessionStorage.setItem("ayra-auth", JSON.stringify(auth));
+    history.replaceState(null, "", `${location.pathname}${location.search}`);
+    if (window.opener) {
+      window.opener.postMessage({ type: "ayra-auth", ...auth }, location.origin);
+      window.close();
+    }
+  }
   const normalize = value => String(value || "").toLowerCase().trim();
   const params = new URLSearchParams(location.search);
 
@@ -138,25 +149,30 @@
   const controls = document.querySelector("[data-index-controls]");
   const grid = document.querySelector("[data-index-grid]");
   if (controls && grid) {
-    const key = `lyrian-manual:${controls.dataset.sectionKey}`;
-    let saved = {};
-    try { saved = JSON.parse(localStorage.getItem(key) || "{}"); } catch {}
     for (const field of controls.elements) {
       if (!field.name) continue;
-      field.value = params.has(field.name) ? params.get(field.name) : (saved[field.name] || field.value);
+      field.value = params.has(field.name) ? params.get(field.name) : field.value;
     }
     for (const disclosure of controls.querySelectorAll("[data-filter-disclosure]")) {
       disclosure.open = [...disclosure.querySelectorAll("[name]")].some(field => field.value);
     }
     const update = () => {
       const state = Object.fromEntries(new FormData(controls));
-      localStorage.setItem(key, JSON.stringify(state));
       const next = new URLSearchParams();
       for (const [name, value] of Object.entries(state)) if (value) next.set(name, value);
       history.replaceState(null, "", `${location.pathname}${next.size ? `?${next}` : ""}`);
+      const returnPath = `${location.pathname}${next.size ? `?${next}` : ""}`;
+      const sectionPath = `/${controls.dataset.sectionKey}/`;
+      for (const link of grid.querySelectorAll("a[href]")) {
+        const destination = new URL(link.getAttribute("href"), location.origin);
+        if (destination.origin !== location.origin || !destination.pathname.startsWith(sectionPath) || destination.pathname === sectionPath) continue;
+        destination.searchParams.delete("return");
+        if (next.size) destination.searchParams.set("return", returnPath);
+        link.href = `${destination.pathname}${destination.search}${destination.hash}`;
+      }
       const cards = [...grid.querySelectorAll("[data-card]")];
       const query = normalize(state.filter);
-      const exactFacets = new Set(["keyword", "source", "l1Grant", "l3Skill", "l5Stat", "l7Stat"]);
+      const exactFacets = new Set(["keyword", "source", "l1Grant", "l3Skill", "l5Stat", "l7Stat", "alternateUnlock", "hasRefund"]);
       for (const card of cards) {
         const matchesQuery = !query || normalize(`${card.dataset.name} ${card.dataset.search}`).includes(query);
         const facetNames = Object.keys(state).filter(name => name !== "filter" && name !== "sort");
@@ -171,6 +187,13 @@
       const direction = state.sort?.endsWith("desc") ? -1 : 1;
       const sortField = state.sort?.split("-")[0] || "name";
       cards.sort((a, b) => {
+        // A typed name match is always more useful than a match found only in
+        // descriptive text or metadata. Preserve the selected sort inside each tier.
+        if (query) {
+          const aTitleMatch = normalize(a.dataset.name).includes(query);
+          const bTitleMatch = normalize(b.dataset.name).includes(query);
+          if (aTitleMatch !== bTitleMatch) return aTitleMatch ? -1 : 1;
+        }
         const numericFields = new Set(["cost", "tier", "l1skill", "l1stat", "l3points", "l3count", "l5count", "l7count"]);
         const av = numericFields.has(sortField) ? Number(a.dataset[sortField] || 0) : normalize(a.dataset[sortField]);
         const bv = numericFields.has(sortField) ? Number(b.dataset[sortField] || 0) : normalize(b.dataset[sortField]);
@@ -183,7 +206,6 @@
     controls.addEventListener("change", update);
     controls.querySelector("[data-clear]")?.addEventListener("click", () => {
       controls.reset();
-      localStorage.removeItem(key);
       for (const disclosure of controls.querySelectorAll("[data-filter-disclosure]")) disclosure.open = false;
       update();
     });
@@ -191,12 +213,9 @@
   }
 
   document.querySelectorAll("[data-return-section]").forEach(link => {
-    const key = `lyrian-manual:${link.dataset.returnSection}`;
-    try {
-      const state = JSON.parse(localStorage.getItem(key) || "{}");
-      const query = new URLSearchParams(Object.entries(state).filter(([, value]) => value));
-      if (query.size) link.href += `?${query}`;
-    } catch {}
+    const returnPath = params.get("return");
+    const sectionPath = `/${link.dataset.returnSection}/`;
+    if (returnPath?.startsWith(sectionPath)) link.href = returnPath;
   });
 
   const searchInput = document.querySelector("[data-search-query]");
@@ -207,9 +226,17 @@
       const query = normalize(searchInput.value);
       let shown = 0;
       for (const card of searchCards) {
-        const visible = !query || normalize(card.dataset.search).includes(query);
+        const visible = !query || normalize(`${card.dataset.name} ${card.dataset.search}`).includes(query);
         card.hidden = !visible;
         if (visible) shown++;
+      }
+      if (query) {
+        searchCards.sort((a, b) => {
+          const aTitleMatch = normalize(a.dataset.name).includes(query);
+          const bTitleMatch = normalize(b.dataset.name).includes(query);
+          if (aTitleMatch !== bTitleMatch) return aTitleMatch ? -1 : 1;
+          return normalize(a.dataset.name).localeCompare(normalize(b.dataset.name));
+        }).forEach(card => card.parentElement.append(card));
       }
       document.querySelector("[data-search-count]").textContent = `${shown} result${shown === 1 ? "" : "s"}`;
     };
@@ -488,5 +515,75 @@
       }
     });
     loadSelectedSkill();
+  }
+  if (chatConfig.apiUrl && !chatConfig.fullInterface) {
+    const shell = document.createElement("section");
+    shell.className = "ayra-chat";
+    shell.innerHTML = `<button class="ayra-chat-toggle" type="button" aria-expanded="false">Ask Ayra <small>AI</small></button><div class="ayra-chat-panel" hidden><header><div><strong>Ayra <span>(AI)</span></strong><small>rules, rulings & builds</small></div><button type="button" data-chat-close aria-label="Close chat">×</button></header><div class="ayra-chat-log" role="log" aria-live="polite"><p class="ayra-message ayra-message-agent">yea?</p></div><div class="ayra-chat-auth"></div><form><label class="sr-only" for="ayra-chat-input">Ask a question</label><textarea id="ayra-chat-input" rows="2" maxlength="4000" placeholder="Ask about a rule or paste a Google Sheet URL…"></textarea><button type="submit">Ask</button></form><p class="ayra-chat-disclosure">AI roleplay, not the actual designer. Verify important rulings.</p></div>`;
+    document.body.append(shell);
+    const panel = shell.querySelector(".ayra-chat-panel");
+    const toggle = shell.querySelector(".ayra-chat-toggle");
+    const log = shell.querySelector(".ayra-chat-log");
+    const form = shell.querySelector("form");
+    const textarea = shell.querySelector("textarea");
+    const authBox = shell.querySelector(".ayra-chat-auth");
+    const conversation = [];
+    const getAuth = () => { try { return JSON.parse(sessionStorage.getItem("ayra-auth") || "null"); } catch { return null; } };
+    const addMessage = (text, kind) => {
+      const message = document.createElement("p");
+      message.className = `ayra-message ayra-message-${kind}`;
+      message.textContent = text;
+      log.append(message);
+      log.scrollTop = log.scrollHeight;
+      return message;
+    };
+    const renderAuth = () => {
+      const auth = getAuth();
+      authBox.replaceChildren();
+      const button = document.createElement("button");
+      button.type = "button";
+      if (auth?.token) {
+        button.textContent = `${auth.user} · sign out`;
+        button.addEventListener("click", () => { sessionStorage.removeItem("ayra-auth"); renderAuth(); });
+      } else {
+        button.textContent = "Sign in with Discord";
+        button.addEventListener("click", () => {
+          const login = `${chatConfig.apiUrl}/auth/login?return_to=${encodeURIComponent(location.href.split("#")[0])}`;
+          window.open(login, "ayra-discord-login", "popup,width=520,height=720");
+        });
+      }
+      authBox.append(button);
+      form.hidden = !auth?.token;
+    };
+    addEventListener("message", event => {
+      if (event.origin !== location.origin || event.data?.type !== "ayra-auth") return;
+      sessionStorage.setItem("ayra-auth", JSON.stringify({ token: event.data.token, user: event.data.user }));
+      renderAuth();
+      textarea.focus();
+    });
+    toggle.addEventListener("click", () => { panel.hidden = !panel.hidden; toggle.setAttribute("aria-expanded", String(!panel.hidden)); if (!panel.hidden) textarea.focus(); });
+    shell.querySelector("[data-chat-close]").addEventListener("click", () => { panel.hidden = true; toggle.setAttribute("aria-expanded", "false"); toggle.focus(); });
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      const auth = getAuth();
+      const question = textarea.value.trim();
+      if (!auth?.token || !question) return renderAuth();
+      textarea.value = "";
+      addMessage(question, "user");
+      const waiting = addMessage("…", "agent");
+      form.querySelector("button").disabled = true;
+      try {
+        const response = await fetch(`${chatConfig.apiUrl}/chat`, { method: "POST", headers: { authorization: `Bearer ${auth.token}`, "content-type": "application/json" }, body: JSON.stringify({ message: question, history: conversation.slice(-8) }) });
+        const data = await response.json();
+        if (response.status === 401) { sessionStorage.removeItem("ayra-auth"); renderAuth(); }
+        if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+        waiting.textContent = data.answer;
+        conversation.push({ user: question, assistant: data.answer });
+      } catch (error) {
+        waiting.textContent = error.message;
+        waiting.classList.add("ayra-message-error");
+      } finally { form.querySelector("button").disabled = false; }
+    });
+    renderAuth();
   }
 })();
