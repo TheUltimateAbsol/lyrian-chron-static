@@ -244,13 +244,15 @@
     updateSearch();
   }
 
-  const randomDie = sides => {
-    if (globalThis.crypto?.getRandomValues) {
-      const value = new Uint32Array(1);
-      crypto.getRandomValues(value);
-      return (value[0] % sides) + 1;
+  const copyCommand = async (button, command) => {
+    const originalLabel = button.textContent;
+    try {
+      await navigator.clipboard.writeText(command);
+      button.textContent = "Copied";
+    } catch {
+      button.textContent = "Copy failed";
     }
-    return Math.floor(Math.random() * sides) + 1;
+    window.setTimeout(() => { button.textContent = originalLabel; }, 1400);
   };
 
   const actionStats = document.querySelector("[data-action-stats]");
@@ -269,15 +271,6 @@
       if (input.dataset.inlineSharedStat === key && input !== source) input.value = String(value);
     }
     if (persist) saveSharedStats();
-    document.querySelectorAll("[data-roll-card]").forEach(card => {
-      card.querySelector("[data-copy-roll]").disabled = true;
-      card.querySelector("[data-avrae-output]").textContent = "—";
-    });
-    const skillTool = document.querySelector("[data-skill-check]");
-    if (skillTool) {
-      skillTool.querySelector("[data-copy-skill]").disabled = true;
-      skillTool.querySelector("[data-skill-output]").textContent = "—";
-    }
     rollRangeUpdaters.forEach(update => update());
     document.dispatchEvent(new CustomEvent("sharedstatschange", { detail: { key, value } }));
   };
@@ -351,43 +344,17 @@
         ? `!multiline\n${rolls.map(roll => `!r ${roll.expression} ${rollIcon(roll.label)} ${card.dataset.actionName} ${roll.label}: ${roll.details.join(", ")}`).join("\n")}`
         : `!r ${rolls[0].expression} ${card.dataset.actionName}: ${rolls[0].details.join(", ")}`;
       card.querySelector("[data-avrae-output]").textContent = command;
-      card.querySelector("[data-copy-roll]").disabled = false;
       return command;
     };
     card.addEventListener("input", () => {
       updateRanges();
-      card.querySelector("[data-copy-roll]").disabled = true;
-      card.querySelector("[data-avrae-output]").textContent = "—";
-    });
-    rollRangeUpdaters.push(updateRanges);
-    updateRanges();
-    card.querySelector("[data-test-roll]")?.addEventListener("click", () => {
-      const results = specs.map(spec => {
-        const dice = parseDice(spec);
-        const rolls = Array.from({ length: dice.count }, () => randomDie(dice.sides));
-        const kept = dice.keepHighest ? Math.max(...rolls) : rolls.reduce((sum, value) => sum + value, 0);
-        const values = terms(spec);
-        const fixed = Number(spec.dataset.fixed || 0);
-        const total = kept + values.reduce((sum, term) => sum + term.value, 0) + fixed;
-        const diceText = dice.keepHighest ? `[${rolls.join(", ")}] → keep ${kept}` : `[${rolls.join(" + ")}]`;
-        const additions = values.filter(term => term.value !== 0).map(term => `${term.label} ${term.value >= 0 ? "+" : "−"}${Math.abs(term.value)}`);
-        if (fixed) additions.push(`fixed +${fixed}`);
-        return `${spec.dataset.rollLabel}: ${diceText}${additions.length ? `; ${additions.join("; ")}` : ""} = ${total}`;
-      });
-      card.querySelector("[data-roll-result]").textContent = results.join(" · ");
-    });
-    card.querySelector("[data-generate-roll]")?.addEventListener("click", () => {
       generate();
-      card.querySelector("[data-roll-result]").textContent = "Avrae command ready.";
     });
+    rollRangeUpdaters.push(() => { updateRanges(); generate(); });
+    updateRanges();
+    generate();
     card.querySelector("[data-copy-roll]")?.addEventListener("click", async () => {
-      const command = generate();
-      try {
-        await navigator.clipboard.writeText(command);
-        card.querySelector("[data-roll-result]").textContent = "Avrae command copied to the clipboard.";
-      } catch {
-        card.querySelector("[data-roll-result]").textContent = "Copy was unavailable; select the command below manually.";
-      }
+      await copyCommand(card.querySelector("[data-copy-roll]"), generate());
     });
   });
 
@@ -436,6 +403,7 @@
         ? `${skill.dice} + Sub-stat + Skill + Expertise + modifiers`
         : `${skill.dice} + ${skill.name} + Expertise + modifiers`;
       updateSkillRange();
+      generateSkill();
     };
     const loadSelectedSkill = () => {
       const skill = selectedSkill();
@@ -475,44 +443,23 @@
       loadSelectedSkill();
     });
     bonusInput.addEventListener("input", saveSelectedSkill);
-    modifierInput.addEventListener("input", updateSkillRange);
+    modifierInput.addEventListener("input", () => { updateSkillRange(); generateSkill(); });
     substatInput.addEventListener("input", () => {
       const skill = selectedSkill();
       if (skill.substatKey) setSharedStat(skill.substatKey, substatInput.value, substatInput);
       updateSkillRange();
-    });
-    skillTool.addEventListener("input", () => {
-      skillTool.querySelector("[data-copy-skill]").disabled = true;
-      skillTool.querySelector("[data-skill-output]").textContent = "—";
+      generateSkill();
     });
     document.addEventListener("sharedstatschange", event => {
       if (selectedSkill().substatKey && event.detail.key === selectedSkill().substatKey && event.target !== substatInput) updateSkillDisplay();
     });
-    skillTool.querySelector("[data-test-skill]").addEventListener("click", () => {
-      const roll = skillRoll();
-      const die = randomDie(roll.skill.dieSides);
-      const total = die + roll.skill.substat + roll.bonus + roll.modifiers;
-      const additions = [roll.skill.substatKey && `${roll.skill.substatLabel} ${roll.skill.substat}`, `${roll.skill.name} ${roll.bonus}`, `Expertise / modifiers ${roll.modifiers}`].filter(Boolean);
-      skillTool.querySelector("[data-skill-result]").textContent = `[${die}] + ${additions.join(" + ")} = ${total}`;
-    });
     const generateSkill = () => {
       const command = skillRoll().command;
       skillTool.querySelector("[data-skill-output]").textContent = command;
-      skillTool.querySelector("[data-copy-skill]").disabled = false;
       return command;
     };
-    skillTool.querySelector("[data-generate-skill]").addEventListener("click", () => {
-      generateSkill();
-      skillTool.querySelector("[data-skill-result]").textContent = "Avrae command ready.";
-    });
     skillTool.querySelector("[data-copy-skill]").addEventListener("click", async () => {
-      const command = generateSkill();
-      try {
-        await navigator.clipboard.writeText(command);
-        skillTool.querySelector("[data-skill-result]").textContent = "Avrae command copied to the clipboard.";
-      } catch {
-        skillTool.querySelector("[data-skill-result]").textContent = "Copy was unavailable; select the command below manually.";
-      }
+      await copyCommand(skillTool.querySelector("[data-copy-skill]"), generateSkill());
     });
     loadSelectedSkill();
   }
