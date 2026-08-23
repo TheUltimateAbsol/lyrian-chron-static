@@ -413,6 +413,15 @@
     updateComposer();
     input.focus();
   }));
+  messageList.addEventListener("click", event => {
+    const link = event.target.closest("a[href]");
+    if (!link || !messageList.contains(link) || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const url = safeLink(link.href);
+    if (!url || url.origin !== location.origin) return;
+    event.preventDefault();
+    setOpen(false);
+    location.assign(`${url.pathname}${url.search}${url.hash}`);
+  });
   input.addEventListener("input", () => {
     input.style.height = "auto";
     input.style.height = `${Math.min(input.scrollHeight, 132)}px`;
