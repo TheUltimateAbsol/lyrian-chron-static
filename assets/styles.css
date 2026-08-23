@@ -165,7 +165,7 @@ button, input, select { font: inherit; }
 .ayra-chat-signin { background: var(--discord-panel); border-top-color: #202225; }
 .ayra-chat-composer { position: relative; z-index: 1; gap: 0; padding: 0 12px 10px; background: var(--discord-bg); border-top: 0; border-radius: 0; }
 .ayra-chat-composer::before { position: absolute; inset: 0 12px 10px; z-index: -1; background: var(--discord-input); border-radius: 8px; content: ""; }
-.ayra-chat-composer textarea { min-height: 42px; border: 0; border-radius: 8px 0 0 8px; padding: 11px 12px; color: #dbdee1; background: transparent; font: 14px/1.4 Arial, sans-serif; }
+.ayra-chat-composer textarea { min-height: 42px; border: 0; border-radius: 8px 0 0 8px; padding: 11px 12px; color: #dbdee1; background: transparent; font: 16px/1.4 Arial, sans-serif; }
 .ayra-chat-composer textarea::placeholder { color: #949ba4; }
 .ayra-chat-composer textarea:focus { box-shadow: none; }
 .ayra-chat-composer > button { width: 42px; border-radius: 0 8px 8px 0; color: #b5bac1; background: transparent; font-size: 18px; }
