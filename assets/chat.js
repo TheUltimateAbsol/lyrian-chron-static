@@ -23,6 +23,8 @@
   let messages = [];
   let sessionPending = false;
   let pollTimer;
+  let sessionSyncedOnce = false;
+  let latestFinalAt = 0;
 
   const shell = document.createElement("section");
   shell.className = "ayra-chat ayra-chat-full";
@@ -227,6 +229,11 @@
     const auth = getAuth();
     return auth?.token ? { authorization: `Bearer ${auth.token}` } : {};
   };
+  const playIncomingSound = () => {
+    const sound = new Audio(incomingSoundUrl);
+    sound.volume = 0.3;
+    sound.play().catch(() => {});
+  };
   const syncSession = async () => {
     const response = await fetch(`${config.apiUrl}/chat/session?session_id=${encodeURIComponent(sessionId)}`, { headers: sessionHeaders(), cache: "no-store" });
     if (!response.ok) throw new Error(`Chat sync failed (${response.status})`);
@@ -235,11 +242,18 @@
       ["user", "assistant"].includes(message?.role) && typeof message.text === "string"
     ).slice(-MAX_MESSAGES) : [];
     if (remoteMessages.length || !sending) messages = remoteMessages.map(message => ({ ...message, timestamp: message.createdAt }));
+    const nextFinalAt = Math.max(0, ...remoteMessages
+      .filter(message => message.role === "assistant" && message.kind === "final")
+      .map(message => Number(message.createdAt) || 0));
+    const receivedNewFinal = sessionSyncedOnce && nextFinalAt > latestFinalAt;
+    latestFinalAt = Math.max(latestFinalAt, nextFinalAt);
+    sessionSyncedOnce = true;
     const latest = remoteMessages.at(-1);
     sessionPending = latest?.role === "assistant" && latest.kind === "progress";
     renderMessages();
     updateComposer();
     if (!sessionPending) stopPolling();
+    if (receivedNewFinal) playIncomingSound();
   };
   const pollSession = () => syncSession().catch(() => {});
   const startPolling = () => {
@@ -352,11 +366,6 @@
       if (response.status === 401 && authRequired) { setAuth(null); renderAccount(); }
       if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
       await syncSession();
-      if (data.answer) {
-        const sound = new Audio(incomingSoundUrl);
-        sound.volume = 0.3;
-        sound.play().catch(() => {});
-      }
     } catch (error) {
       messages.push({ role: "assistant", kind: "error", text: error.message || "couldn't reach it. try again.", timestamp: Date.now() });
       renderMessages();
