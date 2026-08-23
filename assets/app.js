@@ -13,6 +13,30 @@
   const normalize = value => String(value || "").toLowerCase().trim();
   const params = new URLSearchParams(location.search);
 
+  // Rulebook pages are long enough that browsers can resolve a fragment before
+  // layout has settled. Re-apply it after deferred scripts run so chat source
+  // links always land on the referenced heading, including on mobile Safari.
+  let sourceHighlightTimer = 0;
+  const revealHashTarget = () => {
+    if (!location.hash) return;
+    let target;
+    try {
+      target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    } catch {
+      return;
+    }
+    if (!target) return;
+    target.classList.remove("source-target-highlight");
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ block: "start", behavior: "auto" });
+      target.classList.add("source-target-highlight");
+      clearTimeout(sourceHighlightTimer);
+      sourceHighlightTimer = setTimeout(() => target.classList.remove("source-target-highlight"), 7000);
+    });
+  };
+  addEventListener("hashchange", revealHashTarget);
+  if (location.hash) requestAnimationFrame(revealHashTarget);
+
   const navToggle = document.querySelector(".nav-toggle");
   const sidebar = document.querySelector(".site-sidebar");
   const sidebarClose = document.querySelector(".sidebar-close");

@@ -966,9 +966,16 @@ body[data-section="basic-actions"] input[type="number"] { font: 750 16px/1 var(-
   margin: 1.45em 0 .35em; font-family: var(--font-heading); font-size: clamp(19px, 1.8vw, 22px);
   font-weight: 750; line-height: 1.25; letter-spacing: -.01em;
 }
-.document :is(h2, h3, h4, h5, h6):target {
+.document :is(h2, h3, h4, h5, h6):target,
+.document :is(h2, h3, h4, h5, h6).source-target-highlight {
   margin-inline: -16px; padding: 8px 16px; background: #fff1aa;
   border-radius: 4px; box-shadow: inset 5px 0 0 var(--gold-dark);
+}
+.document :is(h2, h3, h4, h5, h6).source-target-highlight {
+  animation: source-target-flash 1.2s ease-out 2;
+}
+@keyframes source-target-flash {
+  50% { background: #ffd32a; box-shadow: inset 7px 0 0 var(--ink); }
 }
 .document h2:empty,
 .document h3:empty,
