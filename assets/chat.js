@@ -38,7 +38,7 @@
       <header class="ayra-chat-header">
         <div class="ayra-chat-identity"><span class="ayra-avatar-wrap"><img class="ayra-avatar" src="${avatarUrl}" alt=""><i class="ayra-presence" data-chat-presence data-presence="offline" aria-label="Offline"></i></span><div><strong>Aira <em>AI</em></strong><small data-chat-status>Offline</small></div></div>
         <div class="ayra-chat-actions">
-          <button type="button" data-chat-new title="Start a new chat" aria-label="Start a new chat">↻</button>
+          <button class="ayra-chat-new" type="button" data-chat-new title="Start a new chat">New chat</button>
           <button type="button" data-chat-close title="Close chat" aria-label="Close chat">×</button>
         </div>
       </header>
@@ -64,6 +64,7 @@
         </section>
         <div class="ayra-chat-messages" data-chat-messages role="log" aria-live="polite" aria-relevant="additions"></div>
       </div>
+      <div class="ayra-typing-bar" data-chat-typing hidden aria-live="polite"><span>Aira is typing</span><span class="ayra-thinking" aria-hidden="true"><i></i><i></i><i></i></span></div>
       ${authRequired ? `<section class="ayra-chat-signin" data-chat-signin>
         <div><strong>Continue with Discord</strong><p>Your Discord identity is used for access and rate limits. The bot never receives your password.</p></div>
         <button type="button" data-chat-login><span aria-hidden="true">◈</span> Sign in</button>
@@ -83,6 +84,7 @@
   const wakeScreen = shell.querySelector("[data-chat-wake]");
   const welcome = shell.querySelector("[data-chat-welcome]");
   const messageList = shell.querySelector("[data-chat-messages]");
+  const typingBar = shell.querySelector("[data-chat-typing]");
   const account = shell.querySelector("[data-chat-account]");
   const signin = shell.querySelector("[data-chat-signin]");
   const loginButton = shell.querySelector("[data-chat-login]");
@@ -226,16 +228,10 @@
     article.append(avatar, content);
     return article;
   };
-  const createTypingIndicator = () => {
-    const indicator = document.createElement("div");
-    indicator.className = "ayra-typing-indicator";
-    indicator.innerHTML = '<span class="ayra-thinking" aria-label="Aira is thinking"><i></i><i></i><i></i></span><span>Aira is thinking…</span>';
-    return indicator;
-  };
   const renderMessages = () => {
     const rendered = messages.map(createMessage);
-    if (sending || sessionPending) rendered.push(createTypingIndicator());
     messageList.replaceChildren(...rendered);
+    typingBar.hidden = !(sending || sessionPending);
     const waking = wakeState === "waking";
     wakeScreen.hidden = !waking;
     welcome.hidden = waking || messages.length > 0;

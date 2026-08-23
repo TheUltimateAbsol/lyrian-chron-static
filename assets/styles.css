@@ -126,6 +126,7 @@ button, input, select { font: inherit; }
 .ayra-chat-identity small { color: var(--discord-muted); font-size: 10px; }
 .ayra-chat-actions button { width: 30px; height: 30px; color: #b5bac1; background: transparent; border-color: transparent; border-radius: 4px; }
 .ayra-chat-actions button:hover, .ayra-chat-actions button:focus-visible { color: white; background: #4e5058; border-color: #4e5058; }
+.ayra-chat-actions .ayra-chat-new { width: auto; padding: 0 8px; color: #dbdee1; font: 600 11px/1 Arial, sans-serif; }
 .ayra-chat-account { color: var(--discord-muted); background: var(--discord-panel); border-bottom-color: #202225; }
 .ayra-chat-scroll { min-height: 0; flex: 1 1 auto; background: var(--discord-bg); }
 .ayra-chat-wake { display: flex; min-height: 0; gap: 11px; align-items: center; margin: 12px; padding: 12px 13px; color: var(--discord-text); background: var(--discord-panel); border-radius: 4px; text-align: left; }
@@ -159,8 +160,9 @@ button, input, select { font: inherit; }
 .ayra-message-body code { color: #f2f3f5; background: #1e1f22; }
 .ayra-message.is-error .ayra-message-body { color: #ffb3ba; background: transparent; border: 0; }
 .ayra-message.is-progress .ayra-message-body { color: #b5bac1; font-style: italic; }
-.ayra-typing-indicator { display: inline-flex; gap: 8px; align-items: center; min-height: 31px; margin: 6px 16px 4px 60px; color: var(--discord-muted); font: 12px/1 Arial, sans-serif; }
-.ayra-typing-indicator .ayra-thinking { padding-top: 1px; }
+.ayra-typing-bar { display: flex; flex: 0 0 24px; gap: 5px; align-items: center; padding: 0 16px 4px; color: var(--discord-muted); background: var(--discord-bg); font: 11px/1 Arial, sans-serif; }
+.ayra-typing-bar .ayra-thinking { gap: 3px; height: 12px; padding-top: 1px; }
+.ayra-typing-bar .ayra-thinking i { width: 4px; height: 4px; }
 .ayra-thinking i { background: #b5bac1; }
 .ayra-chat-signin { background: var(--discord-panel); border-top-color: #202225; }
 .ayra-chat-composer { position: relative; z-index: 1; gap: 0; padding: 0 12px 10px; background: var(--discord-bg); border-top: 0; border-radius: 0; }
