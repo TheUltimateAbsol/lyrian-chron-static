@@ -352,9 +352,11 @@
       if (response.status === 401 && authRequired) { setAuth(null); renderAccount(); }
       if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
       await syncSession();
-      const sound = new Audio(incomingSoundUrl);
-      sound.volume = 0.3;
-      sound.play().catch(() => {});
+      if (data.answer) {
+        const sound = new Audio(incomingSoundUrl);
+        sound.volume = 0.3;
+        sound.play().catch(() => {});
+      }
     } catch (error) {
       messages.push({ role: "assistant", kind: "error", text: error.message || "couldn't reach it. try again.", timestamp: Date.now() });
       renderMessages();
