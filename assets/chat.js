@@ -8,6 +8,7 @@
   const MAX_MESSAGES = 30;
   const authRequired = config.requireDiscordAuth === true;
   const avatarUrl = "/assets/ayra-avatar.webp";
+  const userAvatarUrl = "/assets/user-avatar.png";
   const incomingSoundUrl = "/assets/discord-message.mp3";
   let sending = false;
   let wakeState = "idle";
@@ -192,7 +193,12 @@
       image.src = avatarUrl;
       image.alt = "";
       avatar.append(image);
-    } else avatar.textContent = "Y";
+    } else {
+      const image = document.createElement("img");
+      image.src = userAvatarUrl;
+      image.alt = "";
+      avatar.append(image);
+    }
     const content = document.createElement("div");
     content.className = "ayra-message-content";
     const meta = document.createElement("div");
