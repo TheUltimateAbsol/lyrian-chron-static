@@ -176,6 +176,7 @@ button, input, select { font: inherit; }
 @keyframes ayra-pulse { 50% { opacity: .4; transform: scale(.8); } }
 @keyframes ayra-wake { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ayra-chat *, .ayra-chat *::before, .ayra-chat *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+@media (hover: none) { .keyword-tooltip-popover, .ability-preview-popover { display: none !important; } }
 @media (max-width: 600px) {
   body.ayra-chat-open { overflow: hidden; }
   .ayra-chat { right: 10px; bottom: 10px; }
