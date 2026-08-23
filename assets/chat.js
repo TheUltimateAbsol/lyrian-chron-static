@@ -177,17 +177,22 @@
       return ["http:", "https:"].includes(url.protocol) ? url : null;
     } catch { return null; }
   };
+  const configureLinkTarget = (link, url) => {
+    if (url.origin === location.origin) return;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+  };
   const appendInline = (parent, text) => {
     const pattern = /(\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`|https?:\/\/[^\s<]+)/g;
     let cursor = 0;
     for (const match of text.matchAll(pattern)) {
       appendReferenceText(parent, text.slice(cursor, match.index));
       if (match[2] && safeLink(match[3])) {
+        const url = safeLink(match[3]);
         const link = document.createElement("a");
-        link.href = safeLink(match[3]);
+        link.href = url;
         link.textContent = match[2];
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
+        configureLinkTarget(link, url);
         parent.append(link);
       } else if (match[4]) {
         const strong = document.createElement("strong");
@@ -203,8 +208,7 @@
           const link = document.createElement("a");
           link.href = url;
           link.textContent = match[0];
-          link.target = "_blank";
-          link.rel = "noopener noreferrer";
+          configureLinkTarget(link, url);
           parent.append(link);
         } else parent.append(document.createTextNode(match[0]));
       }
