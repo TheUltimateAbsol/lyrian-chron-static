@@ -29,12 +29,12 @@
   shell.innerHTML = `
     <button class="ayra-chat-toggle" type="button" aria-controls="ayra-chat-panel" aria-expanded="false">
       <span class="ayra-avatar-wrap ayra-toggle-avatar-wrap"><img class="ayra-toggle-avatar" src="${avatarUrl}" alt=""><i class="ayra-presence" data-chat-presence data-presence="offline" aria-label="Offline"></i></span>
-      <span class="ayra-toggle-copy"><strong>Ask Ayra</strong><small>rules & gameplay rulings</small></span>
+      <span class="ayra-toggle-copy"><strong>Ask Aira</strong><small>rules & gameplay rulings</small></span>
       <span class="ayra-toggle-status" aria-hidden="true"></span>
     </button>
-    <aside class="ayra-chat-panel" id="ayra-chat-panel" aria-label="Ask Ayra AI chat" hidden>
+    <aside class="ayra-chat-panel" id="ayra-chat-panel" aria-label="Ask Aira AI chat" hidden>
       <header class="ayra-chat-header">
-        <div class="ayra-chat-identity"><span class="ayra-avatar-wrap"><img class="ayra-avatar" src="${avatarUrl}" alt=""><i class="ayra-presence" data-chat-presence data-presence="offline" aria-label="Offline"></i></span><div><strong>Ayra <em>AI</em></strong><small data-chat-status>Offline</small></div></div>
+        <div class="ayra-chat-identity"><span class="ayra-avatar-wrap"><img class="ayra-avatar" src="${avatarUrl}" alt=""><i class="ayra-presence" data-chat-presence data-presence="offline" aria-label="Offline"></i></span><div><strong>Aira <em>AI</em></strong><small data-chat-status>Offline</small></div></div>
         <div class="ayra-chat-actions">
           <button type="button" data-chat-new title="Start a new chat" aria-label="Start a new chat">↻</button>
           <button type="button" data-chat-close title="Close chat" aria-label="Close chat">×</button>
@@ -44,12 +44,12 @@
       <div class="ayra-chat-scroll" data-chat-scroll>
         <section class="ayra-chat-wake" data-chat-wake hidden aria-live="polite">
           <span class="ayra-wake-ring" aria-hidden="true"></span>
-          <div><strong>Waking up…</strong><p>First response may take 5–15 seconds. A researched answer can take several minutes; Ayra will leave progress updates here while it works.</p></div>
+          <div><strong>Waking up…</strong><p>First response may take 5–15 seconds. A researched answer can take several minutes; Aira will leave progress updates here while it works.</p></div>
         </section>
         <section class="ayra-chat-welcome" data-chat-welcome>
           <p class="ayra-kicker">Rules & rulings</p>
-          <h2>Ask Ayra.</h2>
-          <p>Ayra searches the current rulebook and the Discord <strong>#gameplay-questions</strong> archive for the answer.</p>
+          <h2>Ask Aira.</h2>
+          <p>Aira searches the current rulebook and the Discord <strong>#gameplay-questions</strong> archive for the answer.</p>
           <div class="ayra-chat-suggestions" aria-label="Suggested questions">
             <button type="button" data-suggestion="How is initiative calculated?">How does initiative work?</button>
             <button type="button" data-suggestion="What happens if I attack the merchant NPCs?">What happens if I attack the merchant NPCs?</button>
@@ -67,11 +67,11 @@
         <button type="button" data-chat-login><span aria-hidden="true">◈</span> Sign in</button>
       </section>` : `<section class="ayra-chat-signin" data-chat-signin hidden></section>`}
       <form class="ayra-chat-composer" data-chat-form>
-        <label class="sr-only" for="ayra-chat-input">Message Ayra AI</label>
+        <label class="sr-only" for="ayra-chat-input">Message Aira AI</label>
         <textarea id="ayra-chat-input" rows="1" maxlength="4000" placeholder="Ask about a rule or ruling…" data-chat-input></textarea>
         <button type="submit" data-chat-send aria-label="Send message"><span aria-hidden="true">↑</span></button>
       </form>
-      <footer class="ayra-chat-disclosure"><span>Ayra (AI)</span> roleplays the designer's style; it is not the real person. Check <strong>#gameplay-questions</strong> for a final ruling.</footer>
+      <footer class="ayra-chat-disclosure"><span>Aira (AI)</span> roleplays the designer's style; it is not the real person. Check <strong>#gameplay-questions</strong> for a final ruling.</footer>
     </aside>`;
   document.body.append(shell);
 
@@ -196,7 +196,7 @@
     const meta = document.createElement("div");
     meta.className = "ayra-message-meta";
     const author = document.createElement("strong");
-    author.textContent = role === "assistant" ? "Ayra" : "You";
+    author.textContent = role === "assistant" ? "Aira" : "You";
     meta.append(author);
     if (role === "assistant") {
       const bot = document.createElement("span");
@@ -209,7 +209,7 @@
     meta.append(time);
     const body = document.createElement("div");
     body.className = "ayra-message-body";
-    if (pending) body.innerHTML = '<span class="ayra-thinking"><i></i><i></i><i></i></span><span class="sr-only">Ayra is thinking</span>';
+    if (pending) body.innerHTML = '<span class="ayra-thinking"><i></i><i></i><i></i></span><span class="sr-only">Aira is thinking</span>';
     else renderText(body, text);
     content.append(meta, body);
     article.append(avatar, content);
@@ -262,7 +262,7 @@
     sendButton.disabled = !canChat || sending || sessionPending || !input.value.trim();
     if (wakeState === "waking") setStatus("Waking up…", "working");
     else if (!hasAccess) setStatus("Sign in to ask", "locked");
-    else if (sending || sessionPending) setStatus("Ayra is researching…", "working");
+    else if (sending || sessionPending) setStatus("Aira is researching…", "working");
     else if (!sending) setStatus(wakeState === "awake" ? "Active" : "Offline", wakeState === "awake" ? "ready" : "locked");
   };
   const renderAccount = () => {
