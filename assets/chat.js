@@ -26,61 +26,6 @@
   let pollTimer;
   let sessionSyncedOnce = false;
   let latestFinalAt = 0;
-  let referenceByName = new Map();
-  let referencePattern = null;
-  let activeReference = null;
-  let referenceTimer = 0;
-
-  const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const positionReferenceTooltip = () => {
-    const tooltip = document.querySelector("[data-chat-reference-tooltip]");
-    if (!activeReference || !tooltip || tooltip.hidden) return;
-    const anchor = activeReference.getBoundingClientRect();
-    const edge = 12;
-    const gap = 9;
-    const left = Math.min(innerWidth - tooltip.offsetWidth - edge, Math.max(edge, anchor.left + anchor.width / 2 - tooltip.offsetWidth / 2));
-    let top = anchor.top - tooltip.offsetHeight - gap;
-    if (top < edge) top = anchor.bottom + gap;
-    tooltip.style.left = `${left}px`;
-    tooltip.style.top = `${Math.min(innerHeight - tooltip.offsetHeight - edge, Math.max(edge, top))}px`;
-  };
-  const showReferenceTooltip = link => {
-    const tooltip = document.querySelector("[data-chat-reference-tooltip]");
-    if (!tooltip) return;
-    activeReference = link;
-    tooltip.textContent = link.dataset.referenceTooltip;
-    tooltip.hidden = false;
-    link.setAttribute("aria-describedby", tooltip.id);
-    requestAnimationFrame(positionReferenceTooltip);
-  };
-  const hideReferenceTooltip = link => {
-    clearTimeout(referenceTimer);
-    if (activeReference !== link) return;
-    link.removeAttribute("aria-describedby");
-    activeReference = null;
-    const tooltip = document.querySelector("[data-chat-reference-tooltip]");
-    if (tooltip) tooltip.hidden = true;
-  };
-  const appendReferenceText = (parent, text) => {
-    if (!referencePattern) return parent.append(document.createTextNode(text));
-    let cursor = 0;
-    for (const match of text.matchAll(referencePattern)) {
-      parent.append(document.createTextNode(text.slice(cursor, match.index)));
-      const entry = referenceByName.get(match[0].toLocaleLowerCase());
-      if (!entry) parent.append(document.createTextNode(match[0]));
-      else {
-        const link = document.createElement("a");
-        link.href = entry.url;
-        link.className = `chat-reference-link${entry.type === "Keyword" ? " keyword" : ""}`;
-        link.textContent = match[0];
-        link.dataset.referenceTooltip = `${entry.type}: ${entry.tooltip || `Open ${entry.name}.`}`;
-        parent.append(link);
-      }
-      cursor = match.index + match[0].length;
-    }
-    parent.append(document.createTextNode(text.slice(cursor)));
-  };
-
   const shell = document.createElement("section");
   shell.className = "ayra-chat ayra-chat-full";
   shell.innerHTML = `
@@ -186,7 +131,7 @@
     const pattern = /(\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`|https?:\/\/[^\s<]+)/g;
     let cursor = 0;
     for (const match of text.matchAll(pattern)) {
-      appendReferenceText(parent, text.slice(cursor, match.index));
+      parent.append(document.createTextNode(text.slice(cursor, match.index)));
       if (match[2] && safeLink(match[3])) {
         const url = safeLink(match[3]);
         const link = document.createElement("a");
@@ -214,7 +159,7 @@
       }
       cursor = match.index + match[0].length;
     }
-    appendReferenceText(parent, text.slice(cursor));
+    parent.append(document.createTextNode(text.slice(cursor)));
   };
   const renderText = (container, text) => {
     const lines = String(text).split("\n");
@@ -296,21 +241,6 @@
     welcome.hidden = waking || messages.length > 0;
     messageList.hidden = waking;
     scroll.scrollTop = scroll.scrollHeight;
-  };
-  const loadReferenceIndex = async () => {
-    try {
-      const response = await fetch("/assets/chat-link-index.json", { cache: "force-cache" });
-      if (!response.ok) throw new Error("Reference index unavailable");
-      const entries = await response.json();
-      referenceByName = new Map(entries
-        .filter(entry => entry && typeof entry.name === "string" && typeof entry.url === "string")
-        .map(entry => [entry.name.toLocaleLowerCase(), entry]));
-      const names = [...referenceByName.values()].map(entry => entry.name).sort((a, b) => b.length - a.length);
-      if (names.length) referencePattern = new RegExp(`\\b(${names.map(escapeRegex).join("|")})\\b`, "gi");
-      renderMessages();
-    } catch {
-      // Chat responses remain readable if this optional enhancement cannot load.
-    }
   };
   const sessionHeaders = () => {
     const auth = getAuth();
@@ -505,39 +435,10 @@
   document.addEventListener("keydown", event => {
     if (event.key === "Escape" && !panel.hidden) { setOpen(false); toggle.focus(); }
   });
-  messageList.addEventListener("pointerover", event => {
-    const link = event.target.closest(".chat-reference-link");
-    if (!link || !messageList.contains(link)) return;
-    clearTimeout(referenceTimer);
-    referenceTimer = setTimeout(() => showReferenceTooltip(link), 500);
-  });
-  messageList.addEventListener("pointerout", event => {
-    const link = event.target.closest(".chat-reference-link");
-    if (!link || link.contains(event.relatedTarget)) return;
-    hideReferenceTooltip(link);
-  });
-  messageList.addEventListener("focusin", event => {
-    const link = event.target.closest(".chat-reference-link");
-    if (link) showReferenceTooltip(link);
-  });
-  messageList.addEventListener("focusout", event => {
-    const link = event.target.closest(".chat-reference-link");
-    if (link) hideReferenceTooltip(link);
-  });
-  addEventListener("scroll", positionReferenceTooltip, true);
-  addEventListener("resize", positionReferenceTooltip);
 
   syncSession().then(() => { if (sessionPending) startPolling(); }).catch(() => {});
 
   renderMessages();
-  const referenceTooltip = document.createElement("div");
-  referenceTooltip.id = "chat-reference-tooltip";
-  referenceTooltip.className = "keyword-tooltip-popover chat-reference-tooltip";
-  referenceTooltip.dataset.chatReferenceTooltip = "";
-  referenceTooltip.setAttribute("role", "tooltip");
-  referenceTooltip.hidden = true;
-  document.body.append(referenceTooltip);
-  loadReferenceIndex();
   renderAccount();
   validateAuth();
   setOpen(localStorage.getItem(OPEN_KEY) === "true" && innerWidth > 600);
