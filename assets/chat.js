@@ -143,7 +143,10 @@
         parent.append(link);
       } else if (match[4]) {
         const strong = document.createElement("strong");
-        strong.textContent = match[4];
+        // Bold spans commonly wrap record links in model output, for example
+        // **[Mana Shield](/abilities/mana-shield/)**. Parse the contents again
+        // instead of flattening the nested link into literal Markdown text.
+        appendInline(strong, match[4]);
         parent.append(strong);
       } else if (match[5]) {
         const code = document.createElement("code");
