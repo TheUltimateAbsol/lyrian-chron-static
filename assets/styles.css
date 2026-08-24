@@ -157,6 +157,8 @@ button, input, select { font: inherit; }
 .ayra-message-body, .ayra-message-user .ayra-message-body { padding: 2px 0 4px; color: #dbdee1; background: transparent; border: 0; box-shadow: none; font: 14px/1.42 Arial, sans-serif; }
 .ayra-message-body p { margin: 0 0 4px; }
 .ayra-message-body a, .ayra-message-user .ayra-message-body a { color: #8dccff; font-weight: 600; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
+.ayra-chat-mention { display: inline; padding: 0 2px; color: #c9cdfb; background: rgb(88 101 242 / 30%); border-radius: 3px; font-weight: 500; cursor: default; }
+.ayra-chat-mention:hover { color: white; background: #5865f2; }
 .ayra-message-body code { color: #f2f3f5; background: #1e1f22; }
 .ayra-message.is-error .ayra-message-body { color: #ffb3ba; background: transparent; border: 0; }
 .ayra-message.is-progress .ayra-message-body { color: #b5bac1; font-style: italic; }

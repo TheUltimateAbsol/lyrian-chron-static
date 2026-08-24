@@ -226,7 +226,18 @@
     const body = document.createElement("div");
     body.className = "ayra-message-body";
     if (pending) body.innerHTML = '<span class="ayra-thinking"><i></i><i></i><i></i></span><span class="sr-only">Aira is thinking</span>';
-    else renderText(body, text);
+    else {
+      renderText(body, text);
+      if (role === "user") {
+        const firstLine = body.querySelector("p, li");
+        if (firstLine) {
+          const mention = document.createElement("span");
+          mention.className = "ayra-chat-mention";
+          mention.textContent = "@Aira";
+          firstLine.prepend(mention, document.createTextNode(" "));
+        }
+      }
+    }
     content.append(meta, body);
     article.append(avatar, content);
     return article;
