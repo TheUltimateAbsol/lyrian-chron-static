@@ -228,6 +228,12 @@
     article.append(avatar, content);
     return article;
   };
+  let keepMessagesPinned = true;
+  const updatePinnedState = () => {
+    const remaining = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight;
+    keepMessagesPinned = remaining < 36;
+  };
+  scroll.addEventListener("scroll", updatePinnedState, { passive: true });
   const renderMessages = () => {
     const rendered = messages.map(createMessage);
     messageList.replaceChildren(...rendered);
@@ -236,7 +242,7 @@
     wakeScreen.hidden = !waking;
     welcome.hidden = waking || messages.length > 0;
     messageList.hidden = waking;
-    scroll.scrollTop = scroll.scrollHeight;
+    if (keepMessagesPinned) requestAnimationFrame(() => { scroll.scrollTop = scroll.scrollHeight; });
   };
   const sessionHeaders = () => {
     const auth = getAuth();
