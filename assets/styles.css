@@ -144,6 +144,22 @@ button, input, select { font: inherit; }
 .ayra-chat-history > input:focus { border-color: #5865f2; box-shadow: 0 0 0 2px rgb(88 101 242 / 25%); }
 .ayra-chat-history > input::placeholder { color: #7d828b; }
 .ayra-chat-history-list { min-height: 0; flex: 1 1 auto; overflow-y: auto; padding: 0 6px 10px; }
+.ayra-chat-scroll, .ayra-chat-history-list, .ayra-chat textarea {
+  scrollbar-color: #1a1b1e transparent;
+  scrollbar-width: thin;
+}
+.ayra-chat-scroll, .ayra-chat-history-list { scrollbar-gutter: stable; }
+.ayra-chat-scroll::-webkit-scrollbar, .ayra-chat-history-list::-webkit-scrollbar, .ayra-chat textarea::-webkit-scrollbar { width: 10px; height: 10px; }
+.ayra-chat-scroll::-webkit-scrollbar-track, .ayra-chat-history-list::-webkit-scrollbar-track, .ayra-chat textarea::-webkit-scrollbar-track { background: transparent; }
+.ayra-chat-scroll::-webkit-scrollbar-thumb, .ayra-chat-history-list::-webkit-scrollbar-thumb, .ayra-chat textarea::-webkit-scrollbar-thumb {
+  min-height: 34px;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: #1a1b1e;
+  background-clip: padding-box;
+}
+.ayra-chat-scroll::-webkit-scrollbar-thumb:hover, .ayra-chat-history-list::-webkit-scrollbar-thumb:hover, .ayra-chat textarea::-webkit-scrollbar-thumb:hover { background-color: #111214; }
+.ayra-chat-scroll::-webkit-scrollbar-corner, .ayra-chat-history-list::-webkit-scrollbar-corner, .ayra-chat textarea::-webkit-scrollbar-corner { background: transparent; }
 .ayra-chat-history-item { display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 7px; border: 0; border-radius: 4px; padding: 9px 8px; color: #b5bac1; background: transparent; text-align: left; cursor: pointer; }
 .ayra-chat-history-item:hover, .ayra-chat-history-item:focus-visible { color: #dbdee1; background: #35373c; outline: 0; }
 .ayra-chat-history-item.is-current { color: white; background: #404249; }
