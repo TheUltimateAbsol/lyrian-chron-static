@@ -110,8 +110,15 @@ button, input, select { font: inherit; }
 
 /* Discord-style conversation surface. */
 .ayra-chat { --discord-bg: #313338; --discord-panel: #2b2d31; --discord-deep: #1e1f22; --discord-input: #383a40; --discord-text: #f2f3f5; --discord-muted: #949ba4; --discord-link: #00a8fc; }
-.ayra-chat-panel { display: flex; width: min(420px, calc(100vw - 28px)); height: min(590px, calc(100dvh - 112px)); flex-direction: column; color: var(--discord-text); background: var(--discord-bg); border-color: #1e1f22; border-radius: 8px; box-shadow: 0 20px 60px rgb(0 0 0 / 42%); }
-.ayra-chat-header, .ayra-chat-account, .ayra-chat-signin, .ayra-chat-composer, .ayra-chat-disclosure { flex: 0 0 auto; }
+.ayra-chat-panel { display: grid; width: min(420px, calc(100vw - 28px)); height: min(590px, calc(100dvh - 112px)); grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto auto auto auto; color: var(--discord-text); background: var(--discord-bg); border-color: #1e1f22; border-radius: 8px; box-shadow: 0 20px 60px rgb(0 0 0 / 42%); transition: width .18s ease; }
+.ayra-chat.has-chat-history .ayra-chat-panel { width: min(700px, calc(100vw - 28px)); grid-template-columns: 230px minmax(0, 1fr); }
+.ayra-chat-header { grid-column: 1 / -1; grid-row: 1; }
+.ayra-chat-account { grid-column: -2 / -1; grid-row: 2; }
+.ayra-chat-scroll { grid-column: -2 / -1; grid-row: 3; }
+.ayra-typing-bar { grid-column: -2 / -1; grid-row: 4; }
+.ayra-chat-signin { grid-column: -2 / -1; grid-row: 5; }
+.ayra-chat-composer { grid-column: -2 / -1; grid-row: 6; }
+.ayra-chat-disclosure { grid-column: -2 / -1; grid-row: 7; }
 .ayra-chat-header { padding: 12px 14px; background: var(--discord-deep); border-bottom: 1px solid #202225; }
 .ayra-chat-identity { gap: 10px; }
 .ayra-avatar-wrap { position: relative; display: inline-flex; flex: 0 0 auto; }
@@ -127,6 +134,23 @@ button, input, select { font: inherit; }
 .ayra-chat-actions button { width: 30px; height: 30px; color: #b5bac1; background: transparent; border-color: transparent; border-radius: 4px; }
 .ayra-chat-actions button:hover, .ayra-chat-actions button:focus-visible { color: white; background: #4e5058; border-color: #4e5058; }
 .ayra-chat-actions .ayra-chat-new { width: auto; padding: 0 8px; color: #dbdee1; font: 600 11px/1 Arial, sans-serif; }
+.ayra-chat-actions .ayra-chat-history-toggle { display: none; width: auto; padding: 0 8px; color: #dbdee1; font: 600 11px/1 Arial, sans-serif; }
+.ayra-chat-history { display: flex; min-width: 0; grid-column: 1; grid-row: 2 / 8; flex-direction: column; overflow: hidden; background: #25262b; border-right: 1px solid #1e1f22; }
+.ayra-chat-history > header { display: flex; min-height: 55px; align-items: center; padding: 11px 12px 8px; }
+.ayra-chat-history > header strong, .ayra-chat-history > header small { display: block; }
+.ayra-chat-history > header strong { color: #f2f3f5; font: 700 13px/1.2 Arial, sans-serif; }
+.ayra-chat-history > header small { margin-top: 3px; color: #949ba4; font: 10px/1.2 Arial, sans-serif; }
+.ayra-chat-history > input { min-height: 36px; margin: 0 10px 9px; border: 1px solid #1e1f22; border-radius: 4px; padding: 7px 9px; color: #dbdee1; background: #1e1f22; font: 16px/1.2 Arial, sans-serif; outline: 0; }
+.ayra-chat-history > input:focus { border-color: #5865f2; box-shadow: 0 0 0 2px rgb(88 101 242 / 25%); }
+.ayra-chat-history > input::placeholder { color: #7d828b; }
+.ayra-chat-history-list { min-height: 0; flex: 1 1 auto; overflow-y: auto; padding: 0 6px 10px; }
+.ayra-chat-history-item { display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 7px; border: 0; border-radius: 4px; padding: 9px 8px; color: #b5bac1; background: transparent; text-align: left; cursor: pointer; }
+.ayra-chat-history-item:hover, .ayra-chat-history-item:focus-visible { color: #dbdee1; background: #35373c; outline: 0; }
+.ayra-chat-history-item.is-current { color: white; background: #404249; }
+.ayra-chat-history-title { overflow: hidden; color: inherit; font: 600 12px/1.25 Arial, sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+.ayra-chat-history-item time { color: #80848e; font: 9px/1.3 Arial, sans-serif; }
+.ayra-chat-history-item small { display: -webkit-box; overflow: hidden; grid-column: 1 / -1; color: #949ba4; font: 10px/1.3 Arial, sans-serif; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.ayra-chat-history-empty { margin: 12px; color: #949ba4; font: 11px/1.4 Arial, sans-serif; text-align: center; }
 .ayra-chat-account { color: var(--discord-muted); background: var(--discord-panel); border-bottom-color: #202225; }
 .ayra-chat-scroll { min-height: 0; flex: 1 1 auto; background: var(--discord-bg); }
 .ayra-chat-wake { display: flex; min-height: 0; gap: 11px; align-items: center; margin: 12px; padding: 12px 13px; color: var(--discord-text); background: var(--discord-panel); border-radius: 4px; text-align: left; }
@@ -186,7 +210,10 @@ button, input, select { font: inherit; }
   body.ayra-chat-open { overflow: hidden; }
   .ayra-chat { right: 10px; bottom: 10px; }
   .ayra-chat-toggle { min-width: 0; grid-template-columns: 38px 1fr 8px; }
-  .ayra-chat-panel { position: fixed; inset: 0; width: auto; height: 100dvh; border: 0; border-radius: 0; }
+  .ayra-chat-panel, .ayra-chat.has-chat-history .ayra-chat-panel { position: fixed; inset: 0; width: auto; height: 100dvh; grid-template-columns: minmax(0, 1fr); border: 0; border-radius: 0; }
+  .ayra-chat.has-chat-history .ayra-chat-actions .ayra-chat-history-toggle { display: grid; }
+  .ayra-chat.has-chat-history .ayra-chat-history { display: none; grid-column: 1; grid-row: 2 / 8; z-index: 8; border-right: 0; }
+  .ayra-chat.has-chat-history[data-history-open="true"] .ayra-chat-history { display: flex; }
   .ayra-chat-composer {
     padding: 14px 12px 11px;
     background: #202225;

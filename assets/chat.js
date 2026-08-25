@@ -5,7 +5,7 @@
   const AUTH_KEY = "ayra-auth";
   const SESSION_KEY = "ayra-chat-session-v1";
   const OPEN_KEY = "ayra-chat-open";
-  const MAX_MESSAGES = 30;
+  const MAX_MESSAGES = 500;
   const authRequired = config.requireDiscordAuth === true;
   const avatarUrl = "/assets/ayra-avatar.webp";
   const userAvatarUrl = "/assets/user-avatar.png";
@@ -19,9 +19,13 @@
   const getAuth = () => readJson(sessionStorage, AUTH_KEY, null);
   const setAuth = auth => auth ? sessionStorage.setItem(AUTH_KEY, JSON.stringify(auth)) : sessionStorage.removeItem(AUTH_KEY);
   const newSessionId = () => crypto.randomUUID();
+  const validSessionId = value => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
   let sessionId = localStorage.getItem(SESSION_KEY) || newSessionId();
   localStorage.setItem(SESSION_KEY, sessionId);
   let messages = [];
+  let chatSessions = [];
+  let sessionsLoading = false;
+  let historyOpen = false;
   let sessionPending = false;
   let pollTimer;
   let sessionSyncedOnce = false;
@@ -38,10 +42,18 @@
       <header class="ayra-chat-header">
         <div class="ayra-chat-identity"><span class="ayra-avatar-wrap"><img class="ayra-avatar" src="${avatarUrl}" alt=""><i class="ayra-presence" data-chat-presence data-presence="offline" aria-label="Offline"></i></span><div><strong>Aira <em>AI</em></strong><small data-chat-status>Offline</small></div></div>
         <div class="ayra-chat-actions">
+          <button class="ayra-chat-history-toggle" type="button" data-chat-history-toggle aria-label="Show chat history" aria-expanded="false">Chats</button>
           <button class="ayra-chat-new" type="button" data-chat-new title="Start a new chat">New chat</button>
           <button type="button" data-chat-close title="Close chat" aria-label="Close chat">×</button>
         </div>
       </header>
+      <section class="ayra-chat-history" data-chat-history hidden aria-label="Past chats">
+        <header><div><strong>Past chats</strong><small>Kept for 30 days</small></div></header>
+        <label class="sr-only" for="ayra-chat-history-search">Search past chats</label>
+        <input id="ayra-chat-history-search" type="search" placeholder="Search chats" autocomplete="off" data-chat-history-search>
+        <div class="ayra-chat-history-list" data-chat-history-list></div>
+        <p class="ayra-chat-history-empty" data-chat-history-empty hidden>No matching chats.</p>
+      </section>
       <div class="ayra-chat-account" data-chat-account></div>
       <div class="ayra-chat-scroll" data-chat-scroll>
         <section class="ayra-chat-wake" data-chat-wake hidden aria-live="polite">
@@ -86,6 +98,11 @@
   const messageList = shell.querySelector("[data-chat-messages]");
   const typingBar = shell.querySelector("[data-chat-typing]");
   const account = shell.querySelector("[data-chat-account]");
+  const history = shell.querySelector("[data-chat-history]");
+  const historyList = shell.querySelector("[data-chat-history-list]");
+  const historyEmpty = shell.querySelector("[data-chat-history-empty]");
+  const historySearch = shell.querySelector("[data-chat-history-search]");
+  const historyToggle = shell.querySelector("[data-chat-history-toggle]");
   const signin = shell.querySelector("[data-chat-signin]");
   const loginButton = shell.querySelector("[data-chat-login]");
   const form = shell.querySelector("[data-chat-form]");
@@ -111,10 +128,71 @@
     document.body.classList.toggle("ayra-chat-open", open && matchMedia("(max-width: 600px)").matches);
     if (open) {
       wakeAgent();
+      loadSessions();
       requestAnimationFrame(() => {
         if (wakeState === "waking") return;
         (!authRequired || getAuth()?.token) ? input.focus() : loginButton.focus();
       });
+    }
+  };
+
+  const formatHistoryDate = value => {
+    const date = new Date(Number(value) || 0);
+    if (Number.isNaN(date.valueOf())) return "";
+    const today = new Date();
+    if (date.toDateString() === today.toDateString()) return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(date);
+    return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(date);
+  };
+
+  const setHistoryOpen = open => {
+    historyOpen = Boolean(open && chatSessions.length);
+    shell.dataset.historyOpen = String(historyOpen);
+    historyToggle.setAttribute("aria-expanded", String(historyOpen));
+    if (historyOpen) requestAnimationFrame(() => historySearch.focus());
+  };
+
+  const renderHistory = () => {
+    const hasSessions = chatSessions.length > 0;
+    shell.classList.toggle("has-chat-history", hasSessions);
+    history.hidden = !hasSessions;
+    historyToggle.hidden = !hasSessions;
+    if (!hasSessions) historyOpen = false;
+    shell.dataset.historyOpen = String(historyOpen);
+    const query = historySearch.value.trim().toLocaleLowerCase();
+    const matching = chatSessions.filter(item => !query || `${item.title} ${item.preview} ${item.searchText || ""}`.toLocaleLowerCase().includes(query));
+    historyList.replaceChildren(...matching.map(item => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.sessionId = item.sessionId;
+      button.className = "ayra-chat-history-item";
+      button.classList.toggle("is-current", item.sessionId === sessionId);
+      button.setAttribute("aria-current", item.sessionId === sessionId ? "true" : "false");
+      const heading = document.createElement("span");
+      heading.className = "ayra-chat-history-title";
+      heading.textContent = item.title || "New chat";
+      const date = document.createElement("time");
+      date.textContent = formatHistoryDate(item.updatedAt);
+      const preview = document.createElement("small");
+      preview.textContent = item.preview || "Open chat";
+      button.append(heading, date, preview);
+      return button;
+    }));
+    historyEmpty.hidden = !hasSessions || matching.length > 0;
+  };
+
+  const loadSessions = async () => {
+    if (sessionsLoading || (authRequired && !getAuth()?.token)) return;
+    sessionsLoading = true;
+    try {
+      const response = await fetch(`${config.apiUrl}/chat/sessions`, { headers: sessionHeaders(), cache: "no-store" });
+      if (!response.ok) throw new Error(`Chat history failed (${response.status})`);
+      const data = await response.json();
+      chatSessions = Array.isArray(data.sessions) ? data.sessions : [];
+      renderHistory();
+    } catch {
+      // History is optional; a failure should never prevent the active chat.
+    } finally {
+      sessionsLoading = false;
     }
   };
 
@@ -288,7 +366,10 @@
     renderMessages();
     updateComposer();
     if (!sessionPending && !sending) stopPolling();
-    if (receivedNewFinal) playIncomingSound();
+    if (receivedNewFinal) {
+      playIncomingSound();
+      loadSessions();
+    }
   };
   const pollSession = () => syncSession().catch(() => {});
   const startPolling = () => {
@@ -325,7 +406,13 @@
       const signout = document.createElement("button");
       signout.type = "button";
       signout.textContent = "Sign out";
-      signout.addEventListener("click", () => { setAuth(null); renderAccount(); updateComposer(); });
+      signout.addEventListener("click", () => {
+        setAuth(null);
+        chatSessions = [];
+        renderHistory();
+        renderAccount();
+        updateComposer();
+      });
       account.append(label, signout);
     } else {
       const label = document.createElement("span");
@@ -351,6 +438,7 @@
       setAuth({ ...auth, user: data.user?.name || auth.user });
     } catch { setAuth(null); }
     renderAccount();
+    loadSessions();
   };
   const wakeAgent = async () => {
     if (wakeState !== "idle") return;
@@ -400,6 +488,7 @@
       if (response.status === 401 && authRequired) { setAuth(null); renderAccount(); }
       if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
       await syncSession();
+      await loadSessions();
       if (sessionPending) startPolling();
     } catch (error) {
       messages.push({ role: "assistant", kind: "error", text: error.message || "couldn't reach it. try again.", timestamp: Date.now() });
@@ -411,16 +500,50 @@
     }
   };
 
-  toggle.addEventListener("click", () => setOpen(panel.hidden));
-  shell.querySelector("[data-chat-close]").addEventListener("click", () => { setOpen(false); toggle.focus(); });
-  shell.querySelector("[data-chat-new]").addEventListener("click", () => {
+  const startNewChat = () => {
+    if (sending) return;
     messages = [];
     sessionPending = false;
+    sessionSyncedOnce = false;
+    latestFinalAt = 0;
     stopPolling();
     sessionId = newSessionId();
     localStorage.setItem(SESSION_KEY, sessionId);
+    setHistoryOpen(false);
+    renderHistory();
     renderMessages();
     input.focus();
+  };
+
+  const openHistorySession = async selectedSessionId => {
+    if (sending) return;
+    if (!validSessionId(selectedSessionId) || selectedSessionId === sessionId) {
+      setHistoryOpen(false);
+      return;
+    }
+    stopPolling();
+    sessionId = selectedSessionId;
+    localStorage.setItem(SESSION_KEY, sessionId);
+    messages = [];
+    sessionPending = false;
+    sessionSyncedOnce = false;
+    latestFinalAt = 0;
+    keepMessagesPinned = true;
+    setHistoryOpen(false);
+    renderHistory();
+    renderMessages();
+    await syncSession().catch(() => {});
+    if (sessionPending) startPolling();
+  };
+
+  toggle.addEventListener("click", () => setOpen(panel.hidden));
+  shell.querySelector("[data-chat-close]").addEventListener("click", () => { setOpen(false); toggle.focus(); });
+  shell.querySelector("[data-chat-new]").addEventListener("click", startNewChat);
+  historyToggle.addEventListener("click", () => setHistoryOpen(!historyOpen));
+  historySearch.addEventListener("input", renderHistory);
+  historyList.addEventListener("click", event => {
+    const button = event.target.closest("[data-session-id]");
+    if (button) openHistorySession(button.dataset.sessionId);
   });
   loginButton?.addEventListener("click", beginLogin);
   shell.querySelectorAll("[data-suggestion]").forEach(button => button.addEventListener("click", () => {
