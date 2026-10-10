@@ -10,10 +10,23 @@ function save(){
   try{localStorage.setItem(STORAGE,JSON.stringify(store));$("#builder-save-status").textContent="Saved in this browser · export a backup to move devices. Rules "+data.version;}
   catch{$("#builder-save-status").textContent="Browser storage unavailable or full. Export this build to keep it.";}
 }
-function commit(next=build){build=next;revision++;save();render();}
+function commit(next=build){build=next;revision++;$('#builder-notice').hidden=true;save();render();}
 function notice(message){const el=$("#builder-notice");el.textContent=message;el.hidden=false;}
 const option=(v,label,current)=>`<option value="${esc(v)}"${v===current?' selected':''}>${esc(label)}</option>`;
 const link=x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)} ↗</a>`;
+const grantAnchor=id=>'builder-grant-'+encodeURIComponent(id);
+function renderUnallocated(){
+  const el=$('#builder-unallocated'),pending=sheet.pending;
+  el.hidden=!pending.length;
+  el.innerHTML=pending.length?`<strong>${pending.length} benefit choice${pending.length===1?' is':'s are'} not allocated</strong><p>You can decide later and keep planning. Unassigned points and bonuses are not included in your stats or prerequisites.</p><a href="#builder-editor-content" data-allocate-grant="">Allocate now →</a><details><summary>See unallocated choices</summary><ul>${pending.map(g=>`<li><a href="#${grantAnchor(g.id)}" data-allocate-grant="${esc(g.id)}">${esc(g.label||g.text)}${g.kind==='skills'?` · ${g.remaining} point${g.remaining===1?'':'s'} left`:''} →</a></li>`).join('')}</ul></details>`:'';
+}
+function showAllocations(id=''){
+  tab='skills';query='';render();
+  const target=id&&document.getElementById(grantAnchor(id))||$('#builder-editor-content');
+  target.scrollIntoView({block:'start',behavior:'instant'});
+  if(id)target.classList.add('builder-allocation-target');
+  target.querySelector('select,input')?.focus({preventScroll:true});
+}
 function render(){
   sheet=evaluateBuild(build,data);
   $("#builder-name").value=build.name;$("#builder-mirane").checked=build.mirane;
@@ -29,7 +42,7 @@ function render(){
   $('[data-builder-tab="progression"]').hidden=build.cursor===0;
   if(build.cursor===0&&tab==='progression')tab='classes';
   const planning=build.creationDone||build.cursor>0;
-  $('.builder-tabs').hidden=build.creationDone&&build.cursor===0;
+  $('.builder-tabs').hidden=build.creationDone&&build.cursor===0&&tab!=='skills';
   const foundations=$('#builder-foundations'),phase=planning?'plan':'creation';
   if(foundationBuild!==build.id||foundationPhase!==phase){foundations.open=!planning;foundationBuild=build.id;foundationPhase=phase;}
   $('#builder-foundations-title').textContent=planning?'Starting character · review / edit':'Character creation · race & starting stats';
@@ -46,7 +59,7 @@ function render(){
   const end=evaluateBuild(build,data,build.weeks.length-1),review=$('#builder-dependencies');review.hidden=!end.errors.length;
   review.innerHTML=`<details open><summary>Check dependencies &amp; budgets · ${end.errors.length} issue${end.errors.length===1?'':'s'}</summary><p>Earlier choices affect the entire plan. Purchases are kept for review; the sheet is provisional until these are resolved.</p><ul>${end.errors.map(e=>`<li>${esc(e)}</li>`).join('')}</ul></details>`;
   document.querySelectorAll('[data-builder-tab]').forEach(b=>b.setAttribute("aria-selected",String(b.dataset.builderTab===tab)));
-  renderFoundations();renderEditor();renderSheet();renderStartingChoices();
+  renderFoundations();renderEditor();renderSheet();renderStartingChoices();renderUnallocated();
 }
 function field(label,html){return `<label>${label}${html}</label>`;}
 const CLANS=['wi','lir','d','ar','lu','ni','un','vi','none'];
@@ -93,20 +106,20 @@ function choices(){
   const unique=[...new Map(sheet.grants.map(g=>[g.id,g])).values()];
   const row=g=>{
     const a=build.allocations[g.id]||{},pending=sheet.pending.find(p=>p.id===g.id);
-    if(g.kind!=="skills")return `<section class="builder-benefit-choice"><h3>${esc(g.label||g.text)}</h3>${g.options.length===1?`<span class="builder-benefit-value">${esc(g.kind==='element'?'Elemental Mastery: '+g.options[0]:g.options[0])}</span>`:field(g.kind==='element'?'Elemental mastery · choose element':g.kind==='stat'?'Stat':'Choose benefit',`<select data-choice="${esc(g.id)}">${option("","Choose…",a.choice)}${g.options.map(n=>option(n,g.kind==='element'?'Elemental Mastery: '+n:n,a.choice)).join("")}</select>`)}</section>`;
+    if(g.kind!=="skills")return `<section class="builder-benefit-choice" id="${grantAnchor(g.id)}"><h3>${esc(g.label||g.text)}</h3>${g.options.length===1?`<span class="builder-benefit-value">${esc(g.kind==='element'?'Elemental Mastery: '+g.options[0]:g.options[0])}</span>`:field(g.kind==='element'?'Elemental mastery · choose element':g.kind==='stat'?'Stat':'Choose benefit',`<select data-choice="${esc(g.id)}">${option("","Decide later (unallocated)",a.choice||'')}${g.options.map(n=>option(n,g.kind==='element'?'Elemental Mastery: '+n:n,a.choice)).join("")}</select>`)}</section>`;
     const rows=Object.entries(a).map(([key,value])=>`<div class="builder-skill-allocation"><span>${esc(key.replace(/\|expertise\|/," · "))}</span><input type="number" min="0" max="${g.count}" value="${value}" data-allocation="${esc(g.id)}" data-key="${esc(key)}" aria-label="${esc(key)} allocated points"><button data-remove-allocation="${esc(g.id)}" data-key="${esc(key)}" aria-label="Remove ${esc(key)}">×</button></div>`).join("");
-    return `<section class="builder-skill-pool"><h3>${esc(g.label||g.text)} <small>${pending?.remaining??0} / ${g.count} left</small></h3>${g.label?`<details><summary>Allocation rules</summary><p>${esc(g.text)}</p></details>`:""}${rows}<form data-pool="${esc(g.id)}" class="builder-pool-form"><select name="skill" aria-label="Skill for ${esc(g.label||g.text)}">${g.options.map(n=>option(n,n,"")).join("")}</select>${g.expertise||g.expertiseOnly?`<input name="expertise" placeholder="Expertise name (optional)" aria-label="Specific expertise name">`:""}<input type="number" name="points" min="1" max="${pending?.remaining||g.count}" value="1" aria-label="Points to allocate"><button${!pending?' disabled':''}>Allocate</button></form></section>`;
+    return `<section class="builder-skill-pool" id="${grantAnchor(g.id)}"><h3>${esc(g.label||g.text)} <small>${pending?.remaining??0} / ${g.count} left</small></h3>${g.label?`<details><summary>Allocation rules</summary><p>${esc(g.text)}</p></details>`:""}${rows}<form data-pool="${esc(g.id)}" class="builder-pool-form"><select name="skill" required aria-label="Skill for ${esc(g.label||g.text)}">${option('','Choose a skill…','')}${g.options.map(n=>option(n,n,"")).join("")}</select>${g.expertise||g.expertiseOnly?`<input name="expertise" placeholder="Expertise name (optional)" aria-label="Specific expertise name">`:""}<input type="number" name="points" min="1" max="${pending?.remaining||g.count}" value="1" aria-label="Points to allocate"><button disabled>Allocate</button></form></section>`;
   };
   const groups=items=>[['skills','Skill points & expertise'],['stat','Stat bonuses'],['proficiency','Weapon & armor proficiencies'],['element','Elemental mastery'],['choice','Other choices']].map(([kind,title])=>{const list=items.filter(g=>g.kind===kind);return list.length?`<section class="builder-benefit-group"><h2>${title}</h2>${list.map(row).join('')}</section>`:'';}).join('');
   const pending=unique.filter(g=>sheet.pending.some(p=>p.id===g.id)),done=unique.filter(g=>!sheet.pending.some(p=>p.id===g.id));
-  return `<section class="builder-section"><h2>Choose newly unlocked benefits</h2><p class="builder-muted">New skill pools, stat bonuses and proficiencies appear here as you level. Completed choices stay saved below.</p>${groups(pending)||'<p class="builder-info">All available benefits are allocated.</p>'}${done.length?`<details class="builder-completed-benefits"><summary>Allocated benefits · review / change (${done.length})</summary>${groups(done)}</details>`:''}</section>`;
+  return `<section class="builder-section"><h2>Choose newly unlocked benefits</h2><p class="builder-muted">New skill pools, Heart / Soul bonuses and proficiencies appear here as you level. You can leave any choice undecided and come back later; partial skill allocations keep the remaining points available.</p><button data-builder-action="defer-choices">Decide later · return to class planning</button>${groups(pending)||'<p class="builder-info">All available benefits are allocated.</p>'}${done.length?`<details class="builder-completed-benefits"><summary>Allocated benefits · review / change (${done.length})</summary>${groups(done)}</details>`:''}</section>`;
 }
 function ledgerRows(entries){return entries.map(e=>`<div class="builder-ledger-entry${e.invalid?' invalid':''}"><span>${e.week?'Week '+e.week:'Creation'}</span><div><strong>${esc(e.label)}</strong><p>${e.cost} EXP${e.creationBT?' · breakthrough pool':` · ${e.sc} SC`}${e.refund?' · '+e.refund+' EXP refunded':''}</p>${e.warning?`<p class="builder-training-note">${esc(e.warning)}</p>`:''}${e.reason?`<p class="builder-refund">${esc(e.reason)}</p>`:''}</div><button data-remove-event="${e.eventId}" aria-label="Remove ${esc(e.label)}"${build.creationDone&&build.cursor===0?' disabled':''}>×</button></div>`).join('');}
 function renderStartingChoices(){const el=$('#builder-creation-choices');el.hidden=build.cursor!==0;el.innerHTML=build.cursor===0&&sheet.ledger.length?`<details><summary>Starting choices · ${sheet.ledger.length}</summary>${ledgerRows(sheet.ledger)}</details>`:'';}
 function progression(){return `<section class="builder-section"><h2>Progression ledger</h2><p class="builder-muted">The ledger stops at the selected week. Removing earlier purchases rechecks future dependencies without deleting them.</p>${ledgerRows(sheet.ledger)||'<p>No purchases yet.</p>'}<button data-builder-action="remove-week">Remove this week (and its purchases)</button></section>`;}
 function renderEditor(){
   const el=$("#builder-editor-content");
-  if(build.creationDone&&build.cursor===0){el.innerHTML=`<section class="builder-ready"><h3>Your starting character is saved</h3><p>Plan weekly EXP below: level an existing class first, unlock another class, or buy a breakthrough.</p><button class="builder-primary" data-builder-action="${build.weeks.length>1?'resume-plan':'next-week'}">${build.weeks.length>1?'Resume weekly plan':'Plan Week 1 · +100 EXP'}</button><button data-builder-action="edit-creation">Edit starting character</button></section>`;return;}
+  if(build.creationDone&&build.cursor===0&&tab!=='skills'){el.innerHTML=`<section class="builder-ready"><h3>Your starting character is saved</h3><p>Plan weekly EXP below: level an existing class first, unlock another class, or buy a breakthrough.</p><button class="builder-primary" data-builder-action="${build.weeks.length>1?'resume-plan':'next-week'}">${build.weeks.length>1?'Resume weekly plan':'Plan Week 1 · +100 EXP'}</button><button data-builder-action="edit-creation">Edit starting character</button></section>`;return;}
   el.innerHTML=({classes,breakthroughs,skills:choices,progression})[tab]();
 }
 function renderFoundations(){
@@ -146,17 +159,20 @@ function attempt(event){
 }
 function sheetText(){return [`${build.name} — ${build.cursor?'Week '+build.cursor:'Creation'}`,`${sheet.sc} Spirit Core (SC) · ${sheet.exp} EXP banked`,...Object.entries(sheet.stats).map(([k,v])=>`${k}: ${v}`),...Object.entries(sheet.derived).map(([k,v])=>`${k}: ${v}`),"Classes:",...Object.entries(sheet.classes).map(([id,c])=>`${data.classes.find(x=>x.classId===id).name} L${c.level}`),"Skills:",...Object.entries(sheet.skills).map(([k,v])=>`${k}: +${v}`),"Expertise:",...Object.entries(sheet.expertise).map(([k,v])=>`${k}: +${v}`),"Proficiencies: "+[...sheet.proficiencies].join(", "),"Elements: "+[...sheet.elements].join(", "),"Abilities:",...[...sheet.abilities].map(id=>data.abilities[id]?.name).filter(Boolean),"Base stats only; equipment excluded.","Notes: "+build.notes].join("\n");}
 document.addEventListener("click",async e=>{
+  const allocationLink=e.target.closest('[data-allocate-grant]');
+  if(allocationLink){e.preventDefault();showAllocations(allocationLink.dataset.allocateGrant);return;}
   const b=e.target.closest("button");if(!b)return;
   for(const [key,field] of [['pickRace','race'],['pickAncestry','ancestry'],['pickClan','clan'],['pickSecondClan','secondClan']])if(b.dataset[key]){
     build[field]=b.dataset[key];if(field==='race'){build.ancestry='';lineageQuery='';}if(field==='ancestry')lineageQuery='';if(field==='clan'&&build.secondClan===build.clan)build.secondClan=CLANS.find(k=>k!==build.clan);commit();return;
   }
-  if(b.dataset.builderTab){tab=b.dataset.builderTab;query="";renderEditor();document.querySelectorAll('[data-builder-tab]').forEach(x=>x.setAttribute('aria-selected',String(x.dataset.builderTab===tab)));$('.builder-editor').scrollIntoView({block:'start',behavior:'instant'});return;}
+  if(b.dataset.builderTab){if(b.dataset.builderTab==='skills'){showAllocations();return;}tab=b.dataset.builderTab;query="";render();$('.builder-editor').scrollIntoView({block:'start',behavior:'instant'});return;}
   if(b.dataset.week!==undefined){build.cursor=Number(b.dataset.week);save();render();return;}
   if(b.dataset.addClass){const c=data.classes.find(x=>x.classId===b.dataset.addClass);attempt({type:"class",id:c.classId,level:nextClassStep(c,sheet,data).level});return;}
   if(b.dataset.addBt){attempt({type:"breakthrough",id:b.dataset.addBt});return;}
   if(b.dataset.removeEvent){for(const week of build.weeks)week.events=week.events.filter(x=>x.uid!==b.dataset.removeEvent);commit();return;}
   if(b.dataset.removeAllocation){delete build.allocations[b.dataset.removeAllocation][b.dataset.key];commit();return;}
   const action=b.dataset.builderAction;
+  if(action==='defer-choices'){tab='classes';render();notice(sheet.pending.length?`${sheet.pending.length} benefit choices left unallocated. Use the Allocate now reminder whenever you're ready.`:'All benefits are allocated.');$('#builder-workspace-title').scrollIntoView({block:'start',behavior:'instant'});return;}
   if(action==='import'){$('#builder-import').click();return;}
   if(action==='confirm-foundations'){$('#builder-foundations').open=false;$('#builder-workspace-title').scrollIntoView({block:'start',behavior:'instant'});return;}
   if(action==="view-sheet"){$('.builder-sheet').scrollIntoView({block:'start',behavior:'instant'});return;}
@@ -177,6 +193,7 @@ document.addEventListener("click",async e=>{
 });
 document.addEventListener("change",e=>{
   const el=e.target;
+  if(el.name==='skill'&&el.closest('[data-pool]')){const form=el.closest('[data-pool]');form.querySelector('button').disabled=!el.value||!sheet.pending.some(g=>g.id===form.dataset.pool);return;}
   if(el.id==="builder-mirane"){build.mirane=el.checked;commit();}
   if(el.id==="builder-start-date"&&el.value){build.startDate=el.value;commit();}
   if(el.id==="builder-name"){build.name=el.value;commit();}
@@ -202,6 +219,7 @@ document.addEventListener('toggle',e=>{if(e.target.isConnected&&e.target.matches
 document.addEventListener("submit",e=>{
   const form=e.target;if(!form.dataset.pool)return;e.preventDefault();
   const g=sheet.grants.find(x=>x.id===form.dataset.pool),values=new FormData(form),skill=values.get('skill'),ex=String(values.get('expertise')||'').trim(),value=Number(values.get('points'));
+  if(!g?.options.includes(skill)){notice('Choose a skill to allocate points, or leave this pool undecided for later.');return;}
   const a=build.allocations[g.id]||{},used=Object.values(a).reduce((n,v)=>n+Number(v),0);
   if(!Number.isInteger(value)||value<1||value>g.count-used){notice('Allocate only the remaining points in this pool.');return;}
   if(g.expertiseOnly&&!ex){notice('Give this expertise a specific name.');return;}

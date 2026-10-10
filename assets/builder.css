@@ -147,6 +147,15 @@
 .builder-next-benefit p { font-size:.9rem;margin:6px 0; }
 .builder-next-benefit small { color:#645228; }
 .builder-continue { width:100%;margin-top:12px; }
+.builder-unallocated { margin:16px 0;padding:14px 16px;background:#fff3d8;border:1px solid #d7ba75;border-left:4px solid #b88421;border-radius:6px; }
+.builder-unallocated p { font-size:.9rem;margin:6px 0; }
+.builder-unallocated a { color:#31546c;font:700 .95rem/1.5 var(--font-ui,system-ui);text-underline-offset:3px; }
+.builder-unallocated a { display:inline-block;padding:8px 0; }
+.builder-unallocated li { margin:8px 0;font-size:.9rem; }
+.builder-unallocated details { margin-bottom:0; }
+.builder-benefit-choice,.builder-skill-pool,#builder-editor-content { scroll-margin-top:100px; }
+.builder-allocation-target { outline:3px solid #b88421;outline-offset:3px; }
+@media(max-width:850px) { .builder-benefit-choice,.builder-skill-pool,#builder-editor-content { scroll-margin-top:185px; } }
 .builder-row-top>div { flex:1;min-width:0; }
 .builder-row-top button { max-width:100%; }
 .builder-ready { padding:16px;border:1px solid #b7ccbf;background:#edf3ee;border-radius:6px; }
