@@ -120,3 +120,51 @@
 @media(max-width:1100px) { .builder-lineage-grid,.builder-clan-grid { grid-template-columns:1fr; } }
 @media(max-width:850px) { .builder-lineage-grid,.builder-clan-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.builder-sheet,.builder-editor { scroll-margin-top:135px; }.builder-quick-links { position:sticky;top:112px;z-index:3;background:#eee9df;padding:8px;border-radius:6px; }.builder-quick-links button { flex:1; }.builder-budget { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:520px) { .builder-build-fields { grid-template-columns:1fr;gap:10px; }.builder-file-actions { grid-template-columns:1fr 1fr; }.builder-lineage-grid,.builder-clan-grid { grid-template-columns:1fr; }.builder-creation-footer button { width:100%; }.builder-quick-links button { padding:8px;font-size:.9rem; }.builder-editor,.builder-sheet { scroll-margin-top:180px; }.builder-skill-pool form { grid-template-columns:1fr 1fr; }.builder-skill-pool form input[name=points] { grid-column:1; }.builder-skill-pool form button { grid-column:2; } }
+
+/* Starting foundations are distinct from the ongoing, owned-class-first plan. */
+.builder-foundations { margin:0 0 24px!important;border:1px solid var(--builder-line)!important;border-radius:6px;padding:14px!important;background:#f3f0e8; }
+.builder-foundations>summary { font-weight:750; }
+#builder-foundation-content { margin-top:20px; }
+.builder-race-grid { display:grid;grid-template-columns:1fr;gap:18px;margin:18px 0; }
+.builder-race-card { display:grid;grid-template-columns:minmax(130px,32%) minmax(0,1fr);min-width:0; }
+.builder-race-card:hover { transform:none; }
+.builder-race-card.selected { outline:3px solid #387654;outline-offset:2px; }
+.builder-race-card>.lineage-art { height:100%;min-height:220px;aspect-ratio:auto;align-self:stretch; }
+.builder-race-card .entity-art { object-fit:contain;object-position:center; }
+.builder-race-card .lineage-content { padding:18px; }
+.builder-race-card h3 { font:850 1.5rem/1.1 var(--font-heading); }
+.builder-race-card .lineage-abilities { margin:0 0 14px;padding:8px 0;border:0; }
+.builder-race-card .builder-ability-detail { margin:5px 0;padding:8px 0;border-bottom:1px solid color-mix(in srgb,var(--lineage-color) 50%,white); }
+.builder-race-card .builder-ability-detail summary { font-size:.95rem; }
+.builder-race-card .builder-ability-detail a { padding:0;background:transparent;border:0;font:inherit; }
+.builder-race-card .builder-ability-detail p { font-size:.95rem; }
+.builder-race-card button { margin-top:auto;align-self:flex-start; }
+.builder-race-card.selected button { background:#d9eddb;border-color:#387654; }
+.builder-race-picker,.builder-add-class,.builder-week-purchases,.builder-completed-benefits { border:1px solid var(--builder-line)!important;border-radius:6px;padding:14px!important;margin:18px 0!important; }
+.builder-add-class>summary { font-weight:750;font-size:1.1rem; }
+.builder-owned-class { border-left:4px solid #387654;padding-left:14px; }
+.builder-next-benefit { padding:12px;background:#edf3ee;border-radius:5px;margin:12px 0; }
+.builder-next-benefit p { font-size:.9rem;margin:6px 0; }
+.builder-next-benefit small { color:#645228; }
+.builder-continue { width:100%;margin-top:12px; }
+.builder-row-top>div { flex:1;min-width:0; }
+.builder-row-top button { max-width:100%; }
+.builder-ready { padding:16px;border:1px solid #b7ccbf;background:#edf3ee;border-radius:6px; }
+.builder-ready button { margin:5px 0; }
+.builder-benefit-group { margin:22px 0; }
+.builder-benefit-choice { border:1px solid var(--builder-line);background:#f5f3ed;padding:12px;border-radius:5px;margin:12px 0; }
+.builder-benefit-choice h3 { font-size:.95rem; }
+.builder-benefit-choice label { font-size:.85rem; }
+.builder-benefit-value { display:block;padding:8px 0;font-size:1rem; }
+.builder-capability-group { margin:14px 0!important;padding:12px!important;background:#f3f1ea;border:1px solid var(--builder-line)!important;border-radius:5px; }
+.builder-capability-group h4 { margin:0 0 8px; }
+.builder-capability-group ul { list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px; }
+.builder-capability-group li { padding:7px 9px;border:1px solid #cfccc3;border-radius:4px;background:#fffdf8;font-size:.9rem; }
+.builder-sheet .builder-capability-group p { display:block;font-size:.9rem;margin-bottom:0; }
+@media(max-width:520px) {
+  .builder-race-card { grid-template-columns:1fr; }
+  .builder-race-card>.lineage-art { height:220px;min-height:0; }
+  .builder-race-card .lineage-content { padding:16px; }
+  .builder-race-card button,.builder-ready button { width:100%; }
+  .builder-foundations { padding:10px!important; }
+}

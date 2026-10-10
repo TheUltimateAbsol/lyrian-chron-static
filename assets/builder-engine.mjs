@@ -16,6 +16,10 @@ export const COMMON = [...MELEE, ...RANGED];
 export const SPECIAL = ["Pistol", "Shotgun", "Sniper Rifle", "Saboteur Thread Daggers", "Lance", "Whip", "Chainsaw", "Channeling Weapons"];
 export const ARMOR = ["Light Armor", "Medium Armor", "Heavy Armor", "Shields", "Greatshields"];
 export const ELEMENTS = ["Arcane", "Fire", "Water", "Wind", "Earth", "Lightning", "Frost", "Dark", "Holy"];
+export function masteredElements(raw) {
+  const body=text(raw);
+  return [...ELEMENTS,"Physical","Astra"].filter(el=>new RegExp(`(?:Elemental\\s+)?mastery(?:\\s+in|:)?\\s+${el}\\b|\\b${el}(?:\\s+Elemental)?\\s+mastery\\b`,"i").test(body));
+}
 export const text = value => String(value || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g,"&").replace(/&[lr][sd]quo;/g,"'").replace(/\s+/g," ").trim();
 const norm = x => text(x).toLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9]+/g," ").trim();
 const number = x => Number(x) || 0;
@@ -146,12 +150,12 @@ function applyGrant(g,s,build) {
   if(s.grants.some(other=>other.id===g.id))return;
   s.grants.push(g);
   const allocation=build.allocations[g.id]||{};
-  if(g.kind==="stat"||g.kind==="proficiency"||g.kind==="element") {
+  if(["stat","proficiency","element","choice"].includes(g.kind)) {
     const chosen=g.options.length===1?g.options[0]:allocation.choice;
     if(!g.options.includes(chosen)){s.pending.push(g);return;}
     if(g.kind==="stat")s.stats[chosen]+=g.count;
     else if(g.kind==="element")s.elements.add(chosen);
-    else s.proficiencies.add(chosen);
+    else if(g.kind==="proficiency")s.proficiencies.add(chosen);
     return;
   }
   let spent=0;
@@ -172,11 +176,16 @@ function classGrants(cls,level,s,build,data) {
   cls.grants.forEach(g=>applyGrant(g,s,build));
   for(const l of [3,5,7])if(level>=l)(cls.levels[l]||[]).forEach(g=>applyGrant(g,s,build));
   const key=data.abilities[cls.keyAbility];
+  // Later level abilities can grant mastery too (e.g. Elemental Mastery: Fire).
+  for(const id of abilityRefs(cls,level,data)) {
+    const a=data.abilities[id];
+    if(id!==cls.keyAbility)masteredElements(`${a?.name||''} ${a?.body||''}`).forEach(el=>s.elements.add(el));
+  }
   const benefits=[key?.benefit1,key?.benefit2,key?.benefit3,key?.benefit4].filter(Boolean);
   for(const [i,b] of benefits.entries()) {
-    if(/upon master/i.test(b)&&level<8)continue;
-    for(const el of ELEMENTS)if(new RegExp(`(?:mastery(?: in|:)?)\\s+(?:in\\s+)?${el}|${el}(?: Elemental)? mastery`,"i").test(b))s.elements.add(el);
-    if(/upon master.*element of your choice/i.test(b)&&level===8)applyGrant({id:`${cls.classId}:mastery`,kind:"element",count:1,options:ELEMENTS,text:`${cls.name}: mastered element`},s,build);
+    const active=level<8?b.split(/upon master|upon mastering/i)[0]:b;
+    masteredElements(active).forEach(el=>s.elements.add(el));
+    if(/(?:upon master|mastering this class).*element of your choice/i.test(b)&&level===8)applyGrant({id:`${cls.classId}:mastery`,kind:"element",count:1,options:ELEMENTS,text:`${cls.name}: mastered element`},s,build);
     if(/chosen Divine.s element/i.test(b)&&level===8){
       const divine=s.breakthroughs.find(e=>data.breakthroughs.find(bt=>bt.indexId===e.id)?.name==="Divine's Chosen");
       const chosen=divine&&build.allocations[`${divine.id}:${divine.uid}:divine`]?.choice?.split(" · ")[1];
@@ -231,7 +240,7 @@ function initialSheet(build,data) {
     if(build.allocations["demon:proficiency"]?.choice==="Clan skill points")applyGrant({id:"demon:clan-skills",kind:"skills",count:5,options:NORMAL_SKILLS,expertise:true,text:"Demon: 5 clan-related skill points (choose skills related to your clan)"},s,build);
     if(clans.includes("wi"))s.proficiencies.add("Saboteur Thread Daggers");
   }
-  traitIds.forEach(id=>{if(id)s.abilities.add(id);});
+  traitIds.forEach(id=>{if(id){s.abilities.add(id);const a=data.abilities[id];masteredElements(`${a?.name||''} ${a?.body||''}`).forEach(el=>s.elements.add(el));}});
   for(const id of traitIds){
     const body=data.abilities[id]?.body||'',match=body.match(/start with the (.+?) class unlocked and at level (\d+)/i);
     if(!match)continue;
@@ -348,7 +357,7 @@ function btGrants(bt,s,build,event) {
   if(/^(Weapon|Speciality Weapon) Training$/.test(n))applyGrant({id:`${id}:${s.breakthroughs.filter(x=>x.id===id).length}:prof`,kind:"proficiency",count:1,options:n.startsWith("Weapon")?COMMON:SPECIAL,text:n},s,build);
   else parseProficiencies(body,`${id}:${s.breakthroughs.filter(x=>x.id===id).length}`).forEach(g=>applyGrant(g,s,build));
   if(/Elemental Affinity/.test(n))applyGrant({id:`${id}:element`,kind:"element",count:1,options:ELEMENTS,text:n},s,build);
-  if(n==="Divine's Chosen")applyGrant({id:`${id}:divine`,kind:"proficiency",count:1,options:["Kari · Holy","Heira · Astra","Pandora · Arcane","Makai · Water","Ayuzi Kirara · Fire","Eisen · Physical","Athena · Lightning","Clio · Arcane","Yggdrasil · Earth"],text:"Chosen Divine"},s,build);
+  if(n==="Divine's Chosen")applyGrant({id:`${id}:divine`,kind:"choice",count:1,options:["Kari · Holy","Heira · Astra","Pandora · Arcane","Makai · Water","Ayuzi Kirara · Fire","Eisen · Physical","Athena · Lightning","Clio · Arcane","Yggdrasil · Earth"],text:"Chosen Divine"},s,build);
 }
 export function evaluateBuild(build,data,until=build.cursor) {
   const s=initialSheet(build,data);
