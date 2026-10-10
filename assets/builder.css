@@ -72,3 +72,51 @@
 @media(max-width:1100px) { .builder-workspace { grid-template-columns:minmax(0,1fr) 320px;gap:14px; }.builder-pool-form { grid-template-columns:1fr 1fr; }.builder-pool-form button { width:100%; }.builder-stat-inputs { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 @media(max-width:850px) { .builder-workspace { grid-template-columns:1fr; }.builder-sheet { position:static;max-height:none; }.builder-sheet,.builder-editor { scroll-margin-top:135px; }.builder-budget { grid-template-columns:repeat(3,minmax(0,1fr)); }.builder-timeline-heading>div { flex-basis:100%; }.builder-sheet { order:2; }.builder-stat-inputs { grid-template-columns:repeat(4,minmax(0,1fr)); } }
 @media(max-width:480px) { .builder-page { margin-top:18px; }.builder-heading { gap:12px; }.builder-heading h1 { font-size:2rem; }.builder-toolbar { gap:8px; }.builder-toolbar label { flex-basis:100%; }.builder-budget { grid-template-columns:repeat(2,minmax(0,1fr)); }.builder-timeline,.builder-editor,.builder-sheet { padding:13px; }.builder-stat-inputs,.builder-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }.builder-row-top { flex-wrap:wrap; }.builder-row-top button { width:100%; }.builder-pool-form { grid-template-columns:1fr 1fr; }.builder-pool-form select,.builder-pool-form input[name=expertise] { grid-column:1/-1; }.builder-ledger-entry { grid-template-columns:55px minmax(0,1fr) 35px;gap:6px; }.builder-scrubber { flex-wrap:wrap; }.builder-scrubber input { flex-basis:100%; }.builder-tabs button { flex:1 0 40%; }.builder-chart-point { flex-basis:65px;min-width:65px; }.builder-timeline-heading button { flex:1; }.builder-skill-pool { padding:10px; } }
+
+/* Character-only workflow: compact management, visible lineage benefits. */
+.builder-page [hidden] { display:none!important; }
+.builder-build-fields { display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1 0 100%;min-width:0; }
+.builder-build-tools { width:100%;margin:0!important; }
+.builder-file-actions { display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px; }
+.builder-file-actions button { width:100%; }
+.builder-budget { grid-template-columns:repeat(4,minmax(0,1fr));margin:16px 0; }
+.builder-chart-warnings details { background:#fff3d8;border:1px solid #e2c983;padding:12px;border-radius:5px; }
+.builder-chart-warnings p,.builder-dependencies p { font-size:.9rem; }
+.builder-chart-point.acquisition-warning { border-bottom:4px solid #bd8326; }
+.builder-chart-point.has-issues { border-top:3px solid #a64e39; }
+.chart-warning-label { color:#835615;white-space:normal!important; }
+.builder-dependencies { padding:12px 16px;background:#f9e8df;border:1px solid #ddbaaa;border-radius:6px;margin:16px 0; }
+.builder-dependencies details { margin:0;padding:0;border:0; }
+.builder-dependencies li { font-size:.9rem; }
+.builder-quick-links { display:flex;gap:10px;margin:16px 0; }
+.builder-lineage-grid,.builder-clan-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 22px; }
+.builder-lineage-card,.builder-clan-card { min-width:0;border:1px solid var(--builder-line);border-radius:6px;padding:12px;background:#fcfaf5;overflow-wrap:anywhere; }
+.builder-lineage-card.selected,.builder-clan-card.selected { border:2px solid #387654;background:#f1f7ee;padding:11px; }
+.builder-page .builder-lineage-select { display:flex;align-items:center;gap:12px;padding:0;background:transparent;border:0;text-align:left;width:100%;min-height:85px; }
+.builder-lineage-select img { width:76px;height:100px;flex-shrink:0;object-fit:contain;object-position:center; }
+.builder-lineage-select>span { display:flex;flex-direction:column;gap:6px;min-width:0; }
+.builder-lineage-select strong { font-size:1.1rem; }
+.builder-lineage-select small { font-size:.8rem;line-height:1.5;font-weight:500; }
+.builder-lineage-select b { font-size:.8rem;color:#315e43; }
+.builder-race-skills { font-size:.82rem!important;margin-top:12px!important; }
+.builder-lineage-card summary { font-size:.85rem; }
+.builder-trait-preview { margin-top:12px;border-top:1px solid #dedbd0;padding-top:10px; }
+.builder-trait-preview strong { font-size:.9rem; }
+.builder-trait-preview p { font-size:.85rem;margin-bottom:0; }
+.builder-lineage-card .builder-ability-detail p { font-size:.85rem; }
+.builder-subrace-heading { margin-top:30px!important; }
+.builder-selected-race { border-left:3px solid #387654;background:#f1f7ee;padding:14px; }
+.builder-selected-race p { font-size:.9rem; }
+.builder-lineage-grid:has(.builder-primary-choice) { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.builder-primary-choice .builder-lineage-select { flex-direction:column;align-items:center;text-align:center; }
+.builder-primary-choice .builder-badges { justify-content:center; }
+.builder-subrace-picker { background:#f4f1e9;border:1px solid var(--builder-line)!important;padding:12px!important;border-radius:6px; }
+.builder-subrace-picker>label { margin-top:16px; }
+.builder-subrace-heading+.builder-lineage-grid { grid-template-columns:1fr; }
+.builder-clan-card p { font-size:.85rem; }
+.builder-creation-footer { display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:22px 0 0;padding:18px 0 0;border:0;border-top:1px solid var(--builder-line);background:transparent;color:var(--builder-ink); }
+.builder-creation-footer p { font-size:.9rem;margin:0;flex:1;min-width:160px; }
+.builder-page .builder-creation-footer button { min-height:48px; }
+@media(max-width:1100px) { .builder-lineage-grid,.builder-clan-grid { grid-template-columns:1fr; } }
+@media(max-width:850px) { .builder-lineage-grid,.builder-clan-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.builder-sheet,.builder-editor { scroll-margin-top:135px; }.builder-quick-links { position:sticky;top:112px;z-index:3;background:#eee9df;padding:8px;border-radius:6px; }.builder-quick-links button { flex:1; }.builder-budget { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:520px) { .builder-build-fields { grid-template-columns:1fr;gap:10px; }.builder-file-actions { grid-template-columns:1fr 1fr; }.builder-lineage-grid,.builder-clan-grid { grid-template-columns:1fr; }.builder-creation-footer button { width:100%; }.builder-quick-links button { padding:8px;font-size:.9rem; }.builder-editor,.builder-sheet { scroll-margin-top:180px; }.builder-skill-pool form { grid-template-columns:1fr 1fr; }.builder-skill-pool form input[name=points] { grid-column:1; }.builder-skill-pool form button { grid-column:2; } }

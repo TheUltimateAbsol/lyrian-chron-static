@@ -26,16 +26,22 @@ export function startingWednesday(date=new Date()) {
   return d.toISOString().slice(0,10);
 }
 export function weekDate(build,week) {
-  const d=new Date((build.startWednesday||startingWednesday())+"T12:00:00Z");
-  d.setUTCDate(d.getUTCDate()+7*week);
+  const d=new Date((build.startDate||build.startWednesday||calendarDate())+"T12:00:00Z");
+  if(week>0)d.setUTCDate(d.getUTCDate()+((3-d.getUTCDay()+7)%7)+7*week);
   return d.toISOString().slice(0,10);
+}
+export function calendarDate(date=new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+export function acquisitionWarning(cls) {
+  return `${cls.name}: new class needs 1 IP and a full Wednesday-to-Wednesday training week, postponing EXP progression by a week, unless ${cls.tier===3?'SF':'DSF or SF'} is obtained to skip the delay. EXP cost still applies. Timing is a warning, not an automatic delay in this plan.`;
 }
 const mentions = (s, names) => names.filter(n => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}\\b`,"i").test(s));
 
 export function freshBuild() {
   return { version: 1, id: uid(), name: "New character", mirane: true, race: "human", ancestry: "", clan: "wi", secondClan: "lir", hybrid: false,
     main: {Power:5, Focus:4, Agility:4, Toughness:3}, sub: {Fitness:5,Cunning:4,Reason:3,Awareness:2,Presence:1},
-    humanMain:"Power", humanSub:"Fitness", startWednesday:startingWednesday(), arrivalKitCarried:false, allocations:{}, weeks:[{kind:"creation",events:[]}], cursor:0, creationDone:false, notes:"" };
+    humanMain:"Power", humanSub:"Fitness", startDate:calendarDate(), allocations:{}, weeks:[{kind:"creation",events:[]}], cursor:0, creationDone:false, notes:"" };
 }
 
 export function parseSkillGrants(raw, prefix) {
@@ -121,7 +127,7 @@ export function prepareData(collections, version) {
   });
   return {version,classes,abilities,races:c.primaryRaces.map(r=>({...r,url:`/races/${r.primaryRaceId}/`,grants:parseSkillGrants(r.skills,`${r.primaryRaceId}:race`).map(g=>({...g,label:`${r.name} · Racial skill points`}))})),
     ancestries:c.ancestries.map(a=>({...a,url:`/races/${a.ancestryId}/`})),breakthroughs:c.breakthroughs.map(b=>({...b,url:`/breakthroughs/${b.breakthroughId}/`,body:text(b.description)})),
-    items:c.items.map(i=>({...i,url:`/items/${i.itemId||i.name.toLowerCase().replace(/[’']/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")}/`}))};
+  };
 }
 
 export function lineagePool(build,data) {
@@ -199,10 +205,9 @@ function applyDemonClan(clan,s,build,data) {
   if(clan==="wi")s.proficiencies.add("Saboteur Thread Daggers");
 }
 function initialSheet(build,data) {
-  const s={stats:{...build.main,...build.sub},classes:{},abilities:new Set(),proficiencies:new Set(),elements:new Set(),skills:{},expertise:{},breakthroughs:[],equipment:[],grants:[],pending:[],errors:[],warnings:[],ledger:[],sc:0,spent:0,refunds:0,btSpent:0,ip:3,earned:startingEXP(build,data),clim:3000+(build.mirane?1000:0),itemSpend:0,week:0,expSteps:0};
+  const s={stats:{...build.main,...build.sub},classes:{},abilities:new Set(),proficiencies:new Set(),elements:new Set(),skills:{},expertise:{},breakthroughs:[],grants:[],pending:[],errors:[],warnings:[],ledger:[],sc:0,spent:0,refunds:0,btSpent:0,ip:3,earned:startingEXP(build,data),week:0,expSteps:0};
   for(const [keys,array] of [[MAIN,[3,4,4,5]],[SUB,[1,2,3,4,5]]])if(keys.map(k=>s.stats[k]).sort((a,b)=>a-b).join()!==array.join())s.errors.push(`Assign the complete ${keys===MAIN?"main":"sub"} stat array.`);
   const race=data.races.find(x=>x.primaryRaceId===build.race);
-  if(build.mirane){const kit=data.items.find(i=>/adventurer.s kit/i.test(i.name));if(kit)s.equipment.push({...kit,quantity:1,freeArrival:true,carried:build.arrivalKitCarried===true,equipped:false,eventId:"arrival-kit"});}
   if(!race){s.errors.push("Choose a primary race.");return s;}
   if(build.race==="human"){
     if(MAIN.includes(build.humanMain))s.stats[build.humanMain]++;
@@ -227,6 +232,12 @@ function initialSheet(build,data) {
     if(clans.includes("wi"))s.proficiencies.add("Saboteur Thread Daggers");
   }
   traitIds.forEach(id=>{if(id)s.abilities.add(id);});
+  for(const id of traitIds){
+    const body=data.abilities[id]?.body||'',match=body.match(/start with the (.+?) class unlocked and at level (\d+)/i);
+    if(!match)continue;
+    const cls=data.classes.find(c=>norm(c.name)===norm(match[1]));
+    if(cls){s.classes[cls.classId]={level:number(match[2]),free:true};abilityRefs(cls,number(match[2]),data).forEach(id=>s.abilities.add(id));}
+  }
   if(ancestry?.ancestryId==="pixie"){s.stats.Toughness-=2;s.stats.Agility+=2;}
   race.grants.forEach(g=>applyGrant(g,s,build));
   applyGrant({id:"creation:skills",kind:"skills",count:10,options:NORMAL_SKILLS,expertise:true,text:"Starting skill points"},s,build);
@@ -302,6 +313,7 @@ function requirementResult(raw,s,build,data,isCreation) {
 }
 export function requirements(record,s,build,data,isCreation=build.cursor===0) {
   if(build.mirane&&/angelblooded|shinigami|vampire/i.test(record.classId||record.breakthroughId||record.name))return {ok:false,restricted:true,text:"Mirane: restricted creation / GM-controlled unlock. Not a normal purchase."};
+  if(record.classId==='aetherie'&&[...s.abilities].some(id=>data.abilities[id]?.name==='Highly Sensitive to Magic'))return {ok:true,unknown:false,text:'Highly Sensitive to Magic: ignores Aetherie entry requirements; 100 EXP unlock discount.'};
   if(record.classId==="bard")return {ok:number(s.classes.idol?.level)>=8||Object.entries(s.expertise).some(([k,v])=>/^Art: (?:Singing|Idol|.*(?:flute|guitar|piano|violin|lute|harp|drum|instrument|trumpet|cello|clarinet|saxophone|bass|ukulele))$/i.test(k)&&v>=5),unknown:false,text:text(record.requirements)};
   if(record.classId==="mist-veil-elegy")return {ok:number(s.classes.idol?.level)>=8||number(s.classes.bard?.level)>=8||(number(s.expertise["Art: Flute"])>=10&&Object.values(s.classes).some(x=>x.level>=8)),unknown:false,text:text(record.requirements)};
   if(record.classId==="executor")return {ok:Object.values(s.classes).some(x=>x.level>=8)&&number(s.classes.acolyte?.level)>0,unknown:false,text:text(record.requirements)};
@@ -315,10 +327,13 @@ export function nextClassStep(cls,s,data) {
   const id=level===1?cls.keyAbility:({2:cls.ability1,4:cls.ability2,6:cls.ability3,8:cls.ultimateAbility})[level];
   const a=data.abilities[id];
   let gross=level===1?cls.tier*100:100,refund=0,reason="";
+  const discount=level===1&&cls.classId==='aetherie'&&[...s.abilities].some(id=>data.abilities[id]?.name==='Highly Sensitive to Magic')?100:0;
+  gross=Math.max(0,gross-discount);
   if(id&&s.abilities.has(id)){refund=gross;reason=`Full refund: ${a?.name} already known`;}
   else if(level===1&&a?.associatedAbility&&s.abilities.has(a.associatedAbility)){refund=Math.floor(gross/2);reason=`Partial refund: ${data.abilities[a.associatedAbility]?.name} already known`;}
   else if(a?.name==="Living Lightning"&&/centaur|arachne/i.test(s.ancestryName||"")){refund=gross;reason="Full refund: Living Lightning cannot be used by this lineage";}
-  return {level,id,gross,refund,cost:gross-refund,reason,name:a?.name||({3:"Skills",5:"Heart",7:"Soul"})[level]};
+  if(discount)reason=`Lineage discount: ${discount} EXP${reason?'; '+reason:''}`;
+  return {level,id,gross,discount,refund,cost:gross-refund,reason,name:a?.name||({3:"Skills",5:"Heart",7:"Soul"})[level]};
 }
 export function breakthroughCost(bt,s) {
   if(bt.name==="Primary Stat Training")return Math.min(700,400+100*s.breakthroughs.filter(b=>b.id===bt.indexId).length);
@@ -334,7 +349,6 @@ function btGrants(bt,s,build,event) {
   else parseProficiencies(body,`${id}:${s.breakthroughs.filter(x=>x.id===id).length}`).forEach(g=>applyGrant(g,s,build));
   if(/Elemental Affinity/.test(n))applyGrant({id:`${id}:element`,kind:"element",count:1,options:ELEMENTS,text:n},s,build);
   if(n==="Divine's Chosen")applyGrant({id:`${id}:divine`,kind:"proficiency",count:1,options:["Kari · Holy","Heira · Astra","Pandora · Arcane","Makai · Water","Ayuzi Kirara · Fire","Eisen · Physical","Athena · Lightning","Clio · Arcane","Yggdrasil · Earth"],text:"Chosen Divine"},s,build);
-  if(n==="Rich Parents")s.clim+=3000;
 }
 export function evaluateBuild(build,data,until=build.cursor) {
   const s=initialSheet(build,data);
@@ -346,11 +360,11 @@ export function evaluateBuild(build,data,until=build.cursor) {
     const b=initialSheet(build,data);s.stats=b.stats;s.skills=b.skills;s.expertise=b.expertise;s.proficiencies=b.proficiencies;s.elements=b.elements;s.grants=b.grants;s.pending=b.pending;
     if(s.breakthroughs.some(e=>data.breakthroughs.find(bt=>bt.indexId===e.id)?.name==="Mixed House (Demon)"))applyDemonClan(build.secondClan,s,build,data);
     for(const [id,v] of Object.entries(s.classes))classGrants(data.classes.find(c=>c.classId===id),v.level,s,build,data);
-    for(const e of s.breakthroughs){const bt=data.breakthroughs.find(b=>b.indexId===e.id);const money=s.clim;btGrants(bt,s,build,e);s.clim=money;}
+    for(const e of s.breakthroughs){const bt=data.breakthroughs.find(b=>b.indexId===e.id);btGrants(bt,s,build,e);}
   };
   for(let w=0;w<=Math.min(until,build.weeks.length-1);w++) {
     const week=build.weeks[w];s.week=w;
-    if(w>0&&week.kind==="earn"){
+    if(w>0){
       const slow=s.breakthroughs.some(e=>data.breakthroughs.find(b=>b.indexId===e.id)?.name==="Slow Starter");
       s.earned+=slow&&s.expSteps<5?200:100;s.expSteps++;
     }
@@ -359,22 +373,24 @@ export function evaluateBuild(build,data,until=build.cursor) {
       if(e.type==="class"){
         const cls=data.classes.find(c=>c.classId===e.id);if(!cls){s.errors.push("Class removed from this rules snapshot.");continue;}
         const step=nextClassStep(cls,s,data);if(!step){s.errors.push(`${cls.name} is already mastered.`);continue;}
+        if(e.level&&e.level!==step.level){
+          const issue=`${cls.name}: planned L${e.level} needs L${e.level-1} first; lineage or earlier class choices changed.`;
+          s.errors.push(issue);s.ledger.push({week:w,eventId:e.uid,classId:cls.classId,level:e.level,label:`${cls.name} · L${e.level}`,cost:0,reason:issue,invalid:true,sc:s.sc});continue;
+        }
         if(step.level===1){
           const gate=requirements(cls,s,build,data,w===0);
           if(!gate.ok&&!e.gmApproved)s.errors.push(`${cls.name}: ${gate.text}`);
           if(e.gmApproved)s.warnings.push(`${cls.name}: GM override — ${gate.text}`);
           if(w===0)s.ip--;
           else if(build.mirane){
-            if(e.method==="DSF"&&cls.tier===3)s.errors.push(`${cls.name}: tier 3 requires SF, not DSF.`);
-            if(e.method==="IP"&&week.kind!=="training")s.errors.push(`${cls.name}: IP needs a training week.`);
-            s.warnings.push(`${cls.name}: ${e.method||"IP"} needed${e.method==="IP"?" — one training week; no 100 EXP gain":" — fuel must be obtained in play; EXP still paid"}.`);
+            s.warnings.push(acquisitionWarning(cls));
           }
         }
         s.classes[cls.classId]={level:step.level,free:s.classes[cls.classId]?.free||false};
         s.spent+=step.cost;s.sc+=step.cost;s.refunds+=step.refund;
         abilityRefs(cls,step.level,data).forEach(id=>s.abilities.add(id));
         refreshClassState();
-        s.ledger.push({week:w,eventId:e.uid,label:`${cls.name} · L${step.level} ${step.name}`,cost:step.cost,refund:step.refund,reason:step.reason,method:step.level===1?(w===0?"Creation IP":e.method||"IP"):"",sc:s.sc});
+        s.ledger.push({week:w,eventId:e.uid,classId:cls.classId,level:step.level,label:`${cls.name} · L${step.level} ${step.name}`,cost:step.cost,refund:step.refund,reason:step.reason,method:step.level===1&&w===0?"Creation IP":"",warning:step.level===1&&w>0&&build.mirane?acquisitionWarning(cls):"",sc:s.sc});
       }else if(e.type==="breakthrough"){
         const bt=data.breakthroughs.find(b=>b.indexId===e.id);if(!bt){s.errors.push("Unknown breakthrough.");continue;}
         const gate=requirements(bt,s,build,data,w===0);
@@ -385,13 +401,6 @@ export function evaluateBuild(build,data,until=build.cursor) {
         s.breakthroughs.push(e);if(bt.ability)s.abilities.add(bt.ability);
         btGrants(bt,s,build,e);refreshClassState();
         s.ledger.push({week:w,eventId:e.uid,label:bt.name,cost,creationBT:w===0,sc:s.sc});
-      }else if(e.type==="item"){
-        const item=data.items.find(i=>i.indexId===e.id);if(!item)continue;
-        const qty=Math.max(1,number(e.quantity)),cost=number(String(item.cost).match(/[\d.]+/)?.[0])*qty;
-        s.equipment.push({...item,quantity:qty,carried:e.carried!==false,equipped:e.equipped===true,eventId:e.uid});s.itemSpend+=cost;
-        if(!/^[\d.]+(?:\s*clim)?$/i.test(text(item.cost)))s.warnings.push(`${item.name}: price depends on configuration; list-price estimate only.`);
-        if(w===0&&build.mirane&&cost/qty>4000)s.errors.push(`${item.name}: above Mirane's 4000 Clim creation purchase limit.`);
-        s.ledger.push({week:w,eventId:e.uid,label:`${item.name} × ${qty}`,clim:cost,sc:s.sc});
       }
       if(s.spent>s.earned)s.errors.push(`Week ${w}: ${s.spent-s.earned} EXP over budget.`);
       if(s.btSpent>300)s.errors.push("Creation breakthroughs exceed 300 EXP.");
@@ -413,46 +422,26 @@ export function evaluateBuild(build,data,until=build.cursor) {
     if(a.name==="Peddler of Wares")extraBurden++;
   }
   for(const e of s.breakthroughs){const bt=data.breakthroughs.find(b=>b.indexId===e.id);if(/Wide Circuits/.test(bt.name))mana++;if(bt.name==="On the draw")initiative++;if(/Organized Inventory/.test(bt.name))extraBurden++;if(/Fast Movement/.test(bt.name))speed+=5;}
-  let equipmentGuard=0,evasionPenalty=0,initiativePenalty=0,blockBonus=0,burden=0;
-  const armorUsed=new Set();
-  for(const i of s.equipment.filter(i=>i.carried)){
-    burden+=number(i.burden)*i.quantity;
-    if(i.equipped){
-      const armor={"Armor (Light)":1,"Armor (Medium)":2,"Armor (Heavy)":3}[i.name];
-      if(armor){
-        if(armorUsed.has("armor")){s.errors.push("Only one regular armor can be equipped.");continue;}
-        armorUsed.add("armor");equipmentGuard+=armor;blockBonus+=armor*4;evasionPenalty+=armor*2;initiativePenalty+=armor;
-        if(!s.proficiencies.has(`${i.name.match(/\((\w+)\)/)[1]} Armor`)){equipmentGuard--;evasionPenalty++;}
-      }else if(i.name==="Armor Plates"){
-        if(!armorUsed.has("plates")&&ARMOR.some(a=>s.proficiencies.has(a)&&a.includes("Armor"))){equipmentGuard++;blockBonus+=2;armorUsed.add("plates");}
-      }else if(i.name==="Shield"||i.name==="Shield (Great)"){
-        if(armorUsed.has("shield")){s.errors.push("Shield bonuses do not stack.");continue;}armorUsed.add("shield");
-        if(i.name==="Shield (Great)"){equipmentGuard++;blockBonus+=8;evasionPenalty+=2;initiativePenalty++;}else blockBonus+=4;
-        if(!s.proficiencies.has(i.name==="Shield"?"Shields":"Greatshields")){equipmentGuard--;evasionPenalty++;}
-      }
-    }
-  }
-  s.derived={HP:20+10*stats.Toughness+hp,Mana:6+stats.Power+mana,AP:4,RP:2+stats.Agility,Evasion:7+stats.Agility-evasionPenalty,Guard:stats.Toughness+equipmentGuard,Potency:11+stats.Focus,Initiative:stats.Agility+initiative-initiativePenalty,"Save bonus":stats.Toughness,Speed:speed,"Burden capacity":10+extraBurden};
-  s.blockBonus=blockBonus;
+  s.derived={HP:20+10*stats.Toughness+hp,Mana:6+stats.Power+mana,AP:4,RP:2+stats.Agility,Evasion:7+stats.Agility,Guard:stats.Toughness,Potency:11+stats.Focus,Initiative:stats.Agility+initiative,"Save bonus":stats.Toughness,Speed:speed,"Burden capacity":10+extraBurden};
   s.size=text(ancestry?.description).match(/\bSize\s*:\s*(Tiny|Small|Medium|Large|Huge)/i)?.[1]||"Medium";
   for(const e of s.breakthroughs){const n=data.breakthroughs.find(b=>b.indexId===e.id)?.name||"";if(n.startsWith("Large Specimen"))s.size="Large";if(n.startsWith("Small Specimen"))s.size="Small";}
-  if(burden>s.derived["Burden capacity"])s.warnings.push("Carried burden exceeds capacity: Rooted while over the limit.");
-  if(s.itemSpend>s.clim)s.warnings.push("Planned equipment exceeds listed funds; future loot / income is not assumed.");
-  s.burden=burden;s.exp=s.earned-s.spent;s.climRemaining=s.clim-s.itemSpend;s.btRemaining=300-s.btSpent;
+  s.exp=s.earned-s.spent;s.btRemaining=300-s.btSpent;
   const cap=s.sc>=10000?Infinity:s.sc>=5000?20:15;
   for(const [k,v] of Object.entries({...s.skills,...s.expertise}))if(v>cap)s.errors.push(`${k}: ${v} exceeds the ${cap}-point skill/expertise cap.`);
   s.errors=[...new Set(s.errors)];s.warnings=[...new Set(s.warnings)];
   return s;
 }
-export function addEvent(build,event,method="IP") {
+export function addEvent(build,event) {
   const next=structuredClone(build);
   if(next.cursor===0&&next.creationDone)throw new Error("Select a later week to plan new purchases, or reopen creation.");
-  if(event.type==="class"&&event.isUnlock&&next.cursor>0&&next.mirane&&method==="IP"){
-    next.weeks.splice(next.cursor+1,0,{kind:"training",events:[]});next.cursor++;
-  }
-  next.weeks[next.cursor].events.push({...event,uid:uid(),method});
+  next.weeks[next.cursor].events.push({...event,uid:uid()});
   return next;
 }
 export function timeline(build,data) {
-  return build.weeks.map((week,i)=>{const s=evaluateBuild(build,data,i);return {week:i,kind:week.kind,sc:s.sc,earned:s.earned,exp:s.exp,steps:s.expSteps,errors:s.errors.length};});
+  return build.weeks.map((week,i)=>{const s=evaluateBuild(build,data,i);return {week:i,sc:s.sc,earned:s.earned,exp:s.exp,steps:s.expSteps,errors:s.errors.length,warnings:s.ledger.filter(e=>e.week===i&&e.warning).map(e=>e.warning)};});
+}
+export function stampPlannedLevels(build,data) {
+  const ledger=evaluateBuild(build,data,build.weeks.length-1).ledger;
+  for(const week of build.weeks)for(const e of week.events)if(e.type==='class'&&!e.level){const entry=ledger.find(x=>x.eventId===e.uid);if(entry?.level)e.level=entry.level;}
+  return build;
 }
