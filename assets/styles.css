@@ -480,6 +480,16 @@ body[data-section="items"] .item-card .card-action { min-height: 32px; padding-t
 /* Class summaries keep rules-reference material visually distinct from narrative copy. */
 .class-detail { grid-template-columns: minmax(0, 1fr) minmax(240px, 330px); gap: clamp(34px, 5vw, 72px); }
 .class-detail-heading { margin-bottom: 34px; }
+.class-next-paths { margin-top: 44px; padding-top: 28px; border-top: 2px solid var(--line); }
+.class-next-paths > h2 { margin: 0 0 12px; }
+.class-next-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; padding: 0; margin: 20px 0; list-style: none; }
+.class-next-list > li { min-width: 0; background: var(--paper-2); border: 1px solid #c5d4dc; border-left: 5px solid var(--ap); padding: 17px 20px; }
+.class-next-list a { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; color: var(--ink); text-decoration: none; }
+.class-next-list a:hover strong, .class-next-list a:focus-visible strong { text-decoration: underline; text-underline-offset: 3px; }
+.class-next-list strong { font: 850 20px/1.3 var(--font-heading); overflow-wrap: anywhere; }
+.class-next-tier { flex-shrink: 0; color: #426075; font: 800 12px/1.3 var(--font-heading); }
+.class-next-list > li > ul { display: grid; gap: 6px; margin: 11px 0 0; padding: 0; list-style: none; color: #555d67; font: 500 14px/1.45 var(--font-heading); }
+.class-next-note { color: #626873; font-size: 14px; }
 .class-detail-heading .lede { margin: -4px 0 21px; color: #5d606b; font: 750 17px/1.35 var(--font-heading); }
 .class-identity {
   display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: stretch; margin: 0;
