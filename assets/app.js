@@ -104,7 +104,7 @@
   });
 
   const keywordLinks = [...document.querySelectorAll(".keyword[data-tooltip]")];
-  if (keywordLinks.length) {
+  if (keywordLinks.length || document.querySelector('.builder-page')) {
     const tooltip = document.createElement("div");
     tooltip.id = "keyword-tooltip";
     tooltip.className = "keyword-tooltip-popover";
@@ -112,8 +112,10 @@
     tooltip.hidden = true;
     document.body.append(tooltip);
     let activeKeyword = null;
+    const keywordInput = matchMedia('(hover: hover) and (pointer: fine) and (min-width: 601px)');
     const positionTooltip = () => {
       if (!activeKeyword || tooltip.hidden) return;
+      if (!activeKeyword.isConnected || !keywordInput.matches) { hideTooltip(); return; }
       const anchor = activeKeyword.getBoundingClientRect();
       const gap = 9;
       const edge = 12;
@@ -127,24 +129,28 @@
       tooltip.style.top = `${top}px`;
     };
     const showTooltip = link => {
+      if (!keywordInput.matches || !link.isConnected) return;
+      activeKeyword?.removeAttribute('aria-describedby');
       activeKeyword = link;
       tooltip.textContent = link.dataset.tooltip;
       tooltip.hidden = false;
       link.setAttribute("aria-describedby", tooltip.id);
       requestAnimationFrame(positionTooltip);
     };
-    const hideTooltip = link => {
-      if (activeKeyword !== link) return;
-      link.removeAttribute("aria-describedby");
+    const hideTooltip = () => {
+      activeKeyword?.removeAttribute("aria-describedby");
       activeKeyword = null;
       tooltip.hidden = true;
     };
-    keywordLinks.forEach(link => {
-      link.addEventListener("pointerenter", () => showTooltip(link));
-      link.addEventListener("pointerleave", () => hideTooltip(link));
-      link.addEventListener("focus", () => showTooltip(link));
-      link.addEventListener("blur", () => hideTooltip(link));
-    });
+    const keywordLink = target => target?.closest?.('.keyword[data-tooltip]');
+    document.addEventListener('pointerover', event => { const link=keywordLink(event.target); if(event.pointerType!=='touch'&&link&&!link.contains(event.relatedTarget))showTooltip(link); });
+    document.addEventListener('pointerout', event => { const link=keywordLink(event.target); if(link&&!link.contains(event.relatedTarget))hideTooltip(); });
+    document.addEventListener('focusin', event => { const link=keywordLink(event.target); if(link)showTooltip(link); });
+    document.addEventListener('focusout', event => { if(keywordLink(event.target))hideTooltip(); });
+    document.addEventListener('keydown', event => { if(event.key==='Escape')hideTooltip(); });
+    document.addEventListener('pointerdown', event => { if(event.pointerType==='touch')hideTooltip(); });
+    keywordInput.addEventListener('change',hideTooltip);
+    new MutationObserver(()=>{if(activeKeyword&&!activeKeyword.isConnected)hideTooltip();}).observe(document.body,{childList:true,subtree:true});
     addEventListener("scroll", positionTooltip, true);
     addEventListener("resize", positionTooltip);
   }

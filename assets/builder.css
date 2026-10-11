@@ -78,7 +78,7 @@
 .builder-sheet-heading h2 { font-size:1.2rem;margin:0; }.builder-sheet-heading button { font-size:.85rem; }.builder-sheet-identity { display:flex;flex-direction:column;gap:6px;margin-top:18px!important; }.builder-sheet-identity span { font-size:.85rem;color:#68665e; }
 .builder-sheet-stats { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:15px 0; }.builder-sheet-stats>div { display:flex;flex-direction:column;gap:3px;padding:8px;background:#e8eef0;border-radius:4px; }.builder-sheet-stats span { font-size:.75rem; }.builder-sheet-stats b { font:700 1.25rem system-ui; }
 .builder-sheet-attributes { display:grid;grid-template-columns:1fr 1fr;gap:14px; }.builder-sheet-attributes dl,.builder-skill-summary { margin:0; }.builder-sheet-attributes dl>div,.builder-skill-summary>div { display:flex;justify-content:space-between;gap:10px;padding:5px 0;font: .9rem system-ui;border-bottom:1px solid #e5e2da; }.builder-sheet dd { margin:0;font-weight:700; }
-.builder-sheet section { border-top:1px solid var(--builder-line);padding-top:14px;margin:15px 0; }.builder-sheet section p { display:flex;justify-content:space-between;gap:8px;font-size:.9rem; }.builder-sheet section b { white-space:nowrap; }
+.builder-sheet #builder-sheet-content>section { border-top:1px solid var(--builder-line);padding-top:14px;margin:15px 0; }.builder-sheet #builder-sheet-content>section>p { display:flex;justify-content:space-between;gap:8px;font-size:.9rem; }.builder-sheet #builder-sheet-content>section>p>b { white-space:nowrap; }
 .builder-badges { display:flex;flex-wrap:wrap;gap:5px;margin:10px 0; }.builder-badges span { font:.8rem system-ui;background:#e9e6dc;padding:5px 8px;border-radius:5px; }
 .builder-validation { background:#fae7de;border-radius:5px;padding:10px!important; }.builder-validation li,.builder-warnings li { font-size:.85rem; }.builder-validation summary { color:#833d26; }
 .builder-ledger-entry { display:grid;grid-template-columns:72px minmax(0,1fr) 42px;gap:10px;border-bottom:1px solid var(--builder-line);padding:14px 0; }.builder-ledger-entry>span { font-size:.85rem;color:#6d6a60; }.builder-ledger-entry p { font-size:.85rem;margin:4px 0; }.builder-ledger-entry.invalid { background:#fbe8de; }.builder-training-note { color:#85631f; }
@@ -151,7 +151,7 @@
 .builder-race-heading .lineage-name { font-size:.65rem;margin-bottom:5px;padding:3px 6px;letter-spacing:.05em; }
 .builder-race-card h3 { margin:0;font:850 1.2rem/1.2 var(--font-heading);overflow-wrap:anywhere; }
 .builder-race-card .lineage-abilities { margin:8px 0 0;padding:0;border:0; }
-.builder-race-card .lineage-abilities h4 { margin:0 0 3px;font-size:.7rem; }
+.builder-race-card .lineage-abilities>h4 { margin:0 0 3px;font-size:.7rem; }
 .builder-race-card .builder-ability-detail { margin:0;padding:0;border:0;border-bottom:1px solid color-mix(in srgb,var(--lineage-color) 50%,white); }
 .builder-race-card .builder-ability-detail summary { font-size:.875rem; }
 .builder-race-card .builder-ability-detail a { padding:0;background:transparent;border:0;font:inherit; }
@@ -182,23 +182,44 @@
 .builder-class-thumbnail img { width:100%;height:100%;object-fit:contain;object-position:center; }
 .builder-class-card .builder-tier { background:color-mix(in srgb,var(--lineage-color) 40%,white); }
 /* Closed rule controls sit beside metadata instead of consuming a full row. */
-.builder-entry-meta { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0 10px;min-width:0;margin:3px 0; }
-.builder-entry-meta>span { flex:1;min-width:0;font: .85rem/1.45 var(--font-ui,system-ui); }
+.builder-entry-meta { min-width:0;margin:3px 0; }
 .builder-page .builder-inline-rules { margin:0;padding:0;border:0;min-width:0; }
-.builder-page .builder-inline-rules>summary { width:max-content;max-width:100%;min-height:28px;padding:3px 0;gap:3px;font-size:.75rem;color:#415b6a;text-decoration:underline;text-underline-offset:3px; }
-.builder-inline-rules[open] { flex-basis:100%; }
-.builder-inline-rules[open]>summary { margin-left:auto; }
-.builder-rules-body { padding:8px 10px;margin-top:3px;border:1px solid var(--builder-line);border-radius:4px;background:var(--paper-2,#fffdf8); }
+.builder-page .builder-inline-rules>summary { display:grid;grid-template-columns:minmax(0,1fr) max-content;align-items:center;min-height:28px;padding:3px 0;gap:10px;color:#415b6a; }
+.builder-page .builder-inline-rules>summary::before,.builder-page .builder-inline-rules[open]>summary::before { display:none;content:none; }
+.builder-rule-meta { min-width:0;font:.85rem/1.45 var(--font-ui,system-ui);color:var(--builder-ink); }
+.builder-rule-toggle { font:.75rem/1.35 var(--font-ui,system-ui);font-weight:650;text-decoration:underline;text-underline-offset:3px;white-space:nowrap; }
+.builder-rule-toggle::before { content:'▸';display:inline-block;width:10px;margin-right:3px; }
+.builder-inline-rules[open]>summary .builder-rule-toggle::before { content:'▾'; }
+.builder-rules-body { min-width:0;margin-top:8px; }
+.builder-rules-body .ability-list { gap:12px; }
+.builder-rules-body .ability-row { min-width:0;box-shadow:none;border-left-width:4px; }
+.builder-rules-body .ability-row-head { display:flex;flex-wrap:wrap;gap:12px;padding:14px; }
+.builder-page .builder-rules-body .ability-row-head h3 { display:block;font:850 1.1rem/1.2 var(--font-heading);margin:0; }
+.builder-page .builder-rules-body .ability-row-head a { color:white; }
+.builder-page .builder-rules-body .ability-row-head .card-kind { font-size:.65rem;margin:0 0 6px; }
+.builder-rules-body .ability-row-body { padding:14px; }
+.builder-rules-body .ability-facts { gap:8px;margin-bottom:14px; }
+.builder-rules-body .ability-facts>div { min-width:0;max-width:100%;padding:9px 11px; }
+.builder-page .builder-rules-body .ability-range-fact a,.builder-page .builder-rules-body .progression-ultimate a { color:white; }
+.builder-rules-body .class-mechanics-panel { padding:10px;margin-bottom:12px;border-top-width:4px; }
+.builder-rules-body .class-mechanics-grid { gap:10px; }
+.builder-rules-body .class-requirements-card,.builder-rules-body .class-progression-card { padding:12px;box-shadow:none; }
+.builder-page .builder-rules-body .class-progression-item { grid-template-columns:54px minmax(0,1fr);gap:4px 8px;min-height:0;padding:9px; }
+.builder-rules-body .class-progression-value { grid-column:2; }
+.builder-page .builder-rules-body .class-progression-list { margin:0;padding:0; }
+.builder-page .builder-rules-body .class-progression-list li { font-size:.85rem; }
+.builder-rules-body .ability-full-text,.builder-rules-body .prose { overflow-wrap:anywhere; }
+.builder-rules-body .ability-full-text p,.builder-rules-body .prose p { line-height:1.55; }
+.builder-rules-body .ability-grants,.builder-rules-body .ability-refund-note { margin:12px;padding:10px; }
 .builder-rules-body p:last-child { margin-bottom:0; }
 .builder-race-card .builder-ability-detail { border:0; }
 .builder-page .builder-ability-detail { margin:0; }
-.builder-ability-detail>span { padding:3px 0; }
-.builder-page .builder-ability-detail a { font-size:.875rem; }
+.builder-page .builder-rule-meta a { font-size:.875rem; }
 .builder-next-level { font-size:.75rem;color:#4b6153!important;margin-right:5px;white-space:nowrap; }
 .builder-class-card h3 { font-family:var(--font-heading); }
 .builder-tier { font-family:var(--font-ui,system-ui); }
 @media(max-width:850px) { .builder-tabs { grid-template-columns:repeat(2,minmax(0,1fr)); }.builder-tabs:has([data-builder-tab="progression"][hidden]) { grid-template-columns:repeat(3,minmax(0,1fr)); } }
-@media(max-width:520px) { .builder-tabs button { font-size:.8rem;padding:8px 5px;min-height:48px; }.builder-class-thumbnail { flex-basis:40px;height:52px; }.builder-entry-meta { gap:0 6px; }.builder-page .builder-inline-rules>summary { min-height:28px;font-size:.75rem; } }
+@media(max-width:520px) { .builder-tabs button { font-size:.8rem;padding:8px 5px;min-height:48px; }.builder-class-thumbnail { flex-basis:40px;height:52px; }.builder-page .builder-inline-rules>summary { min-height:28px;gap:6px; }.builder-rules-body .ability-row-head,.builder-rules-body .ability-row-body { padding:10px; } }
 .builder-ready { padding:16px;border:1px solid #b7ccbf;background:#edf3ee;border-radius:6px; }
 .builder-ready button { margin:5px 0; }
 .builder-benefit-group { margin:22px 0; }

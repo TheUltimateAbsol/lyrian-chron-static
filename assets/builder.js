@@ -1,4 +1,5 @@
 import {MAIN,SUB,COMMON,SPECIAL,ARMOR,text,freshBuild,calendarDate,weekDate,lineagePool,requirements,nextClassStep,breakthroughCost,evaluateBuild,addEvent,timeline,stampPlannedLevels} from "./builder-engine.mjs";
+import {createRulesLoader} from './builder-rules.mjs';
 
 const $=s=>document.querySelector(s), esc=s=>String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const STORAGE="lyrian-character-planner-v1", DATA_CACHE="lyrian-planner-rules-v1";
@@ -14,7 +15,8 @@ function commit(next=build){build=next;revision++;$('#builder-notice').hidden=tr
 function notice(message){const el=$("#builder-notice");el.textContent=message;el.hidden=false;}
 const option=(v,label,current)=>`<option value="${esc(v)}"${v===current?' selected':''}>${esc(label)}</option>`;
 const link=x=>`<a${x.previewHtml?` class="ability-preview-link" data-ability-preview="${esc(x.previewHtml)}"`:''} href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a>`;
-const inlineRules=(label,body,name=label)=>`<details class="builder-inline-rules"><summary aria-label="${esc(name)}">${esc(label)}</summary><div class="builder-rules-body">${body}</div></details>`;
+const loadRules=createRulesLoader();
+const inlineRules=(label,record,name,metadata)=>`<details class="builder-inline-rules" data-builder-rules-url="${esc(record.rulesUrl||'')}"><summary aria-label="${esc(name)}"><span class="builder-rule-meta">${metadata}</span><span class="builder-rule-toggle">${esc(label)}</span></summary><div class="builder-rules-body"><p role="status">${record.rulesUrl?'Loading rules…':'Reconnect and reload to get formatted rules, or open the summary from the name above.'}</p></div></details>`;
 const grantAnchor=id=>'builder-grant-'+encodeURIComponent(id);
 function renderUnallocated(){
   const el=$('#builder-unallocated'),pending=sheet.pending;
@@ -95,15 +97,14 @@ function requirementMarkup(gate,fallback=''){
   return `<p class="builder-requirement${gate.ok?'':' unmet'}">${esc(value||'Entry requirement')}${gate.ok?'':' · '+(gate.unknown?'GM check needed':'not yet met')}</p>`;
 }
 function classRow(c,owned=false){
-  const step=nextClassStep(c,sheet,data),gate=owned?{ok:true}:requirements(c,sheet,build,data),key=data.abilities[c.keyAbility],locked=!gate.ok;
+  const step=nextClassStep(c,sheet,data),gate=owned?{ok:true}:requirements(c,sheet,build,data),locked=!gate.ok;
   const benefit=step?.level===3?c.skills:step?.level===5?c.heart:step?.level===7?c.soul:data.abilities[step?.id]?.body;
   const disabled=!step||(locked&&!gmApproved)||step.cost>sheet.exp||(step.level===1&&build.cursor===0&&sheet.ip<=0);
   const actionLabel=step?`${owned?'Level up':'Unlock'} ${c.name} to level ${step.level} for ${step.cost} EXP`:`${c.name} mastered at level 8`;
-  const progression=`<p>${esc(key?.body)}</p>${key?.associatedAbility?abilityDetail(key.associatedAbility):''}<ol class="builder-class-path">${[[1,key?.name],[2,data.abilities[c.ability1]?.name],[3,c.skills],[4,data.abilities[c.ability2]?.name],[5,c.heart],[6,data.abilities[c.ability3]?.name],[7,c.soul],[8,data.abilities[c.ultimateAbility]?.name]].map(([l,n])=>`<li><b>L${l}</b><span>${esc(text(n))}</span></li>`).join('')}</ol>`;
   return `<article class="builder-catalog-row builder-class-card class-tier-${c.tier}${owned?' builder-owned-class':''}">
     <div class="builder-row-top">${c.imageUrl?`<a class="builder-class-thumbnail" href="${esc(c.url)}" target="_blank" rel="noopener" aria-label="${esc(c.name)} summary"><img src="${esc(c.imageUrl)}" alt="" loading="lazy"></a>`:''}<div><span class="builder-tier">T${c.tier}</span><h3>${link(c)}</h3></div>
     <button class="builder-card-action" data-add-class="${esc(c.classId)}" aria-label="${esc(actionLabel)}"${disabled?' disabled':''}><span>${step?owned?'Level up':'Unlock':'Mastered'}</span><small>${step?`L${step.level} · ${step.cost} EXP`:'L8'}</small></button></div>
-    <div class="builder-entry-meta"><span>${owned?`Level ${sheet.classes[c.classId].level}${sheet.classes[c.classId].free?' · racial unlock':''}`:esc([c.role1,c.role2].filter(Boolean).join(' / '))}</span>${inlineRules('Progression',progression,`${c.name}: full class progression`)}</div>
+    <div class="builder-entry-meta">${inlineRules('Progression',c,`${c.name}: full class progression`,owned?`Level ${sheet.classes[c.classId].level}${sheet.classes[c.classId].free?' · racial unlock':''}`:esc([c.role1,c.role2].filter(Boolean).join(' / ')))}</div>
     ${owned&&step?`<div class="builder-next-benefit">${step.id?abilityDetail(step.id,`Next · L${step.level}`):`<strong>Next · L${step.level} ${esc(step.name)}</strong><p>${esc(text(benefit))}</p>`}${step.cost>sheet.exp?`<small>Bank ${step.cost-sheet.exp} more EXP to take this level.</small>`:''}</div>`:''}
     ${step?.reason?`<p class="builder-refund">${esc(step.reason)} · ${step.refund} EXP returned</p>`:''}
     ${!owned?requirementMarkup(gate,c.requirements):''}
@@ -118,7 +119,7 @@ function classes(){
 function breakthroughs(){
   const rows=sorted(data.breakthroughs,query).map(b=>({b,gate:requirements(b,sheet,build,data),cost:breakthroughCost(b,sheet),owned:sheet.breakthroughs.filter(e=>e.id===b.indexId).length}))
     .filter(x=>!availableOnly||x.gate.ok&&(!x.owned||/multiple times|more than once/i.test(x.b.description)))
-    .map(({b,gate,cost,owned})=>`<article class="builder-catalog-row"><div class="builder-row-top"><div><h3>${link(b)}</h3></div><button class="builder-card-action" data-add-bt="${b.indexId}" aria-label="Add ${esc(b.name)} for ${cost} EXP"${(!gate.ok&&!gmApproved)||(owned&&!/multiple times|more than once/i.test(b.description))||cost>(build.cursor===0?sheet.btRemaining:sheet.exp)?' disabled':''}>Add</button></div><div class="builder-entry-meta"><span>${cost} EXP${owned?' · owned ×'+owned:''}</span>${inlineRules('Rules',`<p>${esc(b.body)}</p>`,`${b.name}: full rules`)}</div>${requirementMarkup(gate)}</article>`).join('');
+    .map(({b,gate,cost,owned})=>`<article class="builder-catalog-row"><div class="builder-row-top"><div><h3>${link(b)}</h3></div><button class="builder-card-action" data-add-bt="${b.indexId}" aria-label="Add ${esc(b.name)} for ${cost} EXP"${(!gate.ok&&!gmApproved)||(owned&&!/multiple times|more than once/i.test(b.description))||cost>(build.cursor===0?sheet.btRemaining:sheet.exp)?' disabled':''}>Add</button></div><div class="builder-entry-meta">${inlineRules('Rules',b,`${b.name}: full rules`,`${cost} EXP${owned?' · owned ×'+owned:''}`)}</div>${requirementMarkup(gate)}</article>`).join('');
   return `${catalogToolbar("breakthroughs")}<p class="builder-info">${build.cursor===0?"Creation: use the separate 300 breakthrough EXP pool. It does not add SC.":"Purchase at any time using banked EXP, just like a class level. The cost adds to SC. No IP, fuel, or training week is needed."}</p><label class="builder-check builder-gm"><input type="checkbox" id="builder-gm"${gmApproved?' checked':''}>GM-confirmed prerequisite override</label><div class="builder-catalog">${rows}</div>`;
 }
 function choices(){
@@ -154,7 +155,7 @@ function proficiencySummary(){
   const group=(title,items)=>items.length?`<section class="builder-capability-group"><h4>${title}</h4><ul>${items.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></section>`:'';
   return group('Weapons',weapons)+group('Armor & shields',armor)+group('Tools & other proficiencies',other)+group('Elemental mastery',[...sheet.elements].sort().map(n=>'Elemental Mastery: '+n))||'<p class="builder-muted">None yet</p>';
 }
-function abilityDetail(id,prefix){const a=data.abilities[id];if(!a)return "";const cost=(label,value)=>value!==''&&value!=null?`${label} ${+value<0?'Variable':value}`:'';const body=`<p>${[cost('AP',a.apCost),cost('RP',a.rpCost),cost('MP',a.manaCost),a.range&&`Range ${a.range}`].filter(Boolean).map(esc).join(" · ")}</p>${a.otherCosts?`<p>Other cost: ${esc(text(a.otherCosts))}</p>`:''}${a.requirement?`<p>Requirement: ${esc(text(a.requirement))}</p>`:''}<p>${esc(a.keywords||"")}</p><p>${esc(a.body)}</p>`;return `<div class="builder-ability-detail builder-entry-meta"><span>${typeof prefix==='string'&&prefix?`<small class="builder-next-level">${esc(prefix)}</small> `:''}${link(a)}</span>${inlineRules('Rules',body,`${a.name}: ability rules`)}</div>`;}
+function abilityDetail(id,prefix){const a=data.abilities[id];if(!a)return "";return `<div class="builder-ability-detail builder-entry-meta">${inlineRules('Rules',a,`${a.name}: ability rules`,`${typeof prefix==='string'&&prefix?`<small class="builder-next-level">${esc(prefix)}</small> `:''}${link(a)}`)}</div>`;}
 function renderSheet(){
   const race=data.races.find(r=>r.primaryRaceId===build.race),ancestry=data.ancestries.find(r=>r.ancestryId===build.ancestry);
   $("#builder-sheet-content").innerHTML=`<p class="builder-sheet-identity"><strong>${esc(build.name)}</strong><span>${esc(race?.name)}${ancestry?' · '+esc(ancestry.name):''} · ${build.cursor?'Week '+build.cursor:'Creation'}</span></p><div class="builder-sheet-stats">${Object.entries(sheet.derived).map(([n,v])=>`<div><span>${n}</span><b>${v}${n==='Speed'?' ft':''}</b></div>`).join("")}</div><div class="builder-sheet-attributes">${[MAIN,SUB].map(group=>`<dl>${group.map(n=>`<div><dt>${n}</dt><dd>${sheet.stats[n]}</dd></div>`).join("")}</dl>`).join("")}</div>
@@ -178,6 +179,8 @@ function attempt(event){
 }
 function sheetText(){return [`${build.name} — ${build.cursor?'Week '+build.cursor:'Creation'}`,`${sheet.sc} Spirit Core (SC) · ${sheet.exp} EXP banked`,...Object.entries(sheet.stats).map(([k,v])=>`${k}: ${v}`),...Object.entries(sheet.derived).map(([k,v])=>`${k}: ${v}`),"Classes:",...Object.entries(sheet.classes).map(([id,c])=>`${data.classes.find(x=>x.classId===id).name} L${c.level}`),"Skills:",...Object.entries(sheet.skills).map(([k,v])=>`${k}: +${v}`),"Expertise:",...Object.entries(sheet.expertise).map(([k,v])=>`${k}: +${v}`),"Proficiencies: "+[...sheet.proficiencies].join(", "),"Elements: "+[...sheet.elements].join(", "),"Abilities:",...[...sheet.abilities].map(id=>data.abilities[id]?.name).filter(Boolean),"Base stats only; equipment excluded.","Notes: "+build.notes].join("\n");}
 document.addEventListener("click",async e=>{
+  const retry=e.target.closest('[data-retry-builder-rules]');
+  if(retry){await loadRules(retry.closest('.builder-inline-rules'));return;}
   const allocationLink=e.target.closest('[data-allocate-grant]');
   if(allocationLink){e.preventDefault();showAllocations(allocationLink.dataset.allocateGrant);return;}
   const b=e.target.closest("button");if(!b)return;
@@ -234,7 +237,11 @@ document.addEventListener("input",e=>{
     query=e.target.value;const caret=e.target.selectionStart;renderEditor();const input=$("#builder-catalog-query");input.focus();try{input.setSelectionRange(caret,caret);}catch{}
   }
 });
-document.addEventListener('toggle',e=>{if(e.target.isConnected&&e.target.matches('.builder-add-class'))catalogOpen=e.target.open;},true);
+document.addEventListener('toggle',e=>{
+  if(!e.target.isConnected)return;
+  if(e.target.matches('.builder-add-class'))catalogOpen=e.target.open;
+  if(e.target.matches('.builder-inline-rules'))void loadRules(e.target);
+},true);
 document.addEventListener("submit",e=>{
   const form=e.target;if(!form.dataset.pool)return;e.preventDefault();
   const g=sheet.grants.find(x=>x.id===form.dataset.pool),values=new FormData(form),skill=values.get('skill'),ex=String(values.get('expertise')||'').trim(),value=Number(values.get('points'));
@@ -253,7 +260,7 @@ $("#builder-import").addEventListener("change",async e=>{
 async function boot(){
   // HTTP cache + Cache API keep the immutable rules bundle reusable; never
   // cache generated sheets, chat data, or arbitrary pages.
-  try{const response=await fetch('/assets/builder-data.json');if(!response.ok)throw Error('Rules download failed');data=await response.json();try{const cache=await caches.open(DATA_CACHE);await cache.put('/assets/builder-data.json',new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}}));}catch{}}
+  try{const response=await fetch('/assets/builder-data.json',{cache:'no-cache'});if(!response.ok)throw Error('Rules download failed');data=await response.json();try{const cache=await caches.open(DATA_CACHE);await cache.put('/assets/builder-data.json',new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}}));}catch{}}
   catch(err){try{const cached=await (await caches.open(DATA_CACHE)).match('/assets/builder-data.json');if(!cached)throw err;data=await cached.json();}catch{ $("#builder-save-status").textContent='Could not load rules. Reload when online.';return;}}
   try{const saved=JSON.parse(localStorage.getItem(STORAGE));if(saved?.version===1&&Array.isArray(saved.builds)&&saved.builds.length)store=saved;}catch{}
   build=stampPlannedLevels(store.builds.find(b=>b.id===store.selected)||store.builds[0]||freshBuild(),data);save();render();
