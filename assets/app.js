@@ -150,7 +150,7 @@
   }
 
   const abilityPreviewLinks = [...document.querySelectorAll(".ability-preview-link[data-ability-preview]")];
-  if (abilityPreviewLinks.length) {
+  if (abilityPreviewLinks.length || document.querySelector('.builder-page')) {
     const tooltip = document.createElement("div");
     tooltip.id = "ability-preview-tooltip";
     tooltip.className = "ability-preview-popover";
@@ -159,8 +159,10 @@
     document.body.append(tooltip);
     let activeLink = null;
     let showTimer = 0;
+    const previewInput = matchMedia('(hover: hover) and (pointer: fine) and (min-width: 601px)');
     const positionTooltip = () => {
       if (!activeLink || tooltip.hidden) return;
+      if (!activeLink.isConnected || !previewInput.matches) { hideTooltip(); return; }
       const anchor = activeLink.getBoundingClientRect();
       const gap = 10;
       const edge = 12;
@@ -179,6 +181,7 @@
     };
     const showTooltip = link => {
       cancelPending();
+      if (!previewInput.matches || !link.isConnected) return;
       if (activeLink && activeLink !== link) activeLink.removeAttribute("aria-describedby");
       activeLink = link;
       tooltip.innerHTML = link.dataset.abilityPreview;
@@ -188,22 +191,33 @@
     };
     const scheduleTooltip = link => {
       cancelPending();
+      if (!previewInput.matches) return;
       showTimer = setTimeout(() => showTooltip(link), 550);
     };
-    const hideTooltip = link => {
+    const hideTooltip = () => {
       cancelPending();
-      if (activeLink !== link) return;
-      link.removeAttribute("aria-describedby");
+      activeLink?.removeAttribute("aria-describedby");
       activeLink = null;
       tooltip.hidden = true;
       tooltip.replaceChildren();
     };
-    abilityPreviewLinks.forEach(link => {
-      link.addEventListener("pointerenter", () => scheduleTooltip(link));
-      link.addEventListener("pointerleave", () => hideTooltip(link));
-      link.addEventListener("focus", () => showTooltip(link));
-      link.addEventListener("blur", () => hideTooltip(link));
+    // Delegation also covers cards inserted by the character builder after boot.
+    const previewLink = target => target?.closest?.('.ability-preview-link[data-ability-preview]');
+    document.addEventListener('pointerover', event => {
+      const link = previewLink(event.target);
+      if (event.pointerType === 'touch' || !link || link.contains(event.relatedTarget)) return;
+      hideTooltip(); scheduleTooltip(link);
     });
+    document.addEventListener('pointerout', event => {
+      const link = previewLink(event.target);
+      if (link && !link.contains(event.relatedTarget)) hideTooltip();
+    });
+    document.addEventListener('focusin', event => { const link = previewLink(event.target); if (link) showTooltip(link); });
+    document.addEventListener('focusout', event => { if (previewLink(event.target)) hideTooltip(); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') hideTooltip(); });
+    document.addEventListener('pointerdown', event => { if (event.pointerType === 'touch') hideTooltip(); });
+    previewInput.addEventListener('change', hideTooltip);
+    new MutationObserver(() => { if (activeLink && !activeLink.isConnected) hideTooltip(); }).observe(document.body, {childList:true,subtree:true});
     addEventListener("scroll", positionTooltip, true);
     addEventListener("resize", positionTooltip);
   }
