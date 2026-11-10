@@ -72,7 +72,7 @@ export function parseStatGrants(raw, prefix) {
   return options.map((n,i)=>({id:`${prefix}:stat:${i}`,kind:"stat",count,options:[n],text:s}));
 }
 
-const PROF_ALIASES = { "longsword":"longswords?", "polearms":"polearms?", "dueling weapons":"dueling weapons?", "pistol":"pistols?", "bow":"bows?", "crossbow":"crossbows?", "sniper rifle":"sniper rifles?", "set of missiles":"sets? of missiles", "channeling weapons":"channeling weapons?", "shields":"(?:normal )?shields?", "greatshields":"greatshields?", "katana":"katanas?", "lance":"lances?", "light swords":"light (?:swords|blades)", "axes":"axes|axe" };
+const PROF_ALIASES = { "longsword":"longswords?", "polearms":"polearms?", "dueling weapons":"dueling weapons?", "pistol":"pistols?", "shotgun":"shotguns?", "bow":"bows?", "crossbow":"crossbows?", "sniper rifle":"sniper rifles?", "set of missiles":"sets? of missiles", "channeling weapons":"channeling weapons?", "shields":"(?:normal )?shields?", "greatshields":"greatshields?", "katana":"katanas?", "lance":"lances?", "light swords":"light (?:swords|blades)", "axes":"axes|axe" };
 function profNames(s) {
   return [...COMMON,...SPECIAL,...ARMOR,"Wands","Staves","Pickaxe","Scythe","Sickle","Hori","Giant Scissors","Unarmed","Cannons","Aetherie Sensory Station","Artificer's Multitool","Alchemist's Alembic","Smith's Hammer"].filter(n => new RegExp(`\\b(?:${PROF_ALIASES[n.toLowerCase()]||n.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")})\\b`,"i").test(s));
 }
@@ -129,7 +129,7 @@ export function prepareData(collections, version) {
     return {...cls,tier:number(cls.tier),url:`/classes/${cls.classId}/`,grants,
       levels:{3:parseSkillGrants(cls.skills,`${cls.classId}:3`).map(g=>({...g,label:`${cls.name} · L3 skill points`})),5:[...parseStatGrants(cls.heart,`${cls.classId}:5`),...parseProficiencies(cls.heart,`${cls.classId}:5`)].map(g=>({...g,label:`${cls.name} · L5 Heart`})),7:parseStatGrants(cls.soul,`${cls.classId}:7`).map(g=>({...g,label:`${cls.name} · L7 Soul`}))}};
   });
-  return {version,classes,abilities,races:c.primaryRaces.map(r=>({...r,url:`/races/${r.primaryRaceId}/`,grants:parseSkillGrants(r.skills,`${r.primaryRaceId}:race`).map(g=>({...g,label:`${r.name} · Racial skill points`}))})),
+  return {version,skyboundTrial:/Skybound Trial/i.test(text(c.rulebook?.content)),classes,abilities,races:c.primaryRaces.map(r=>({...r,url:`/races/${r.primaryRaceId}/`,grants:parseSkillGrants(r.skills,`${r.primaryRaceId}:race`).map(g=>({...g,label:`${r.name} · Racial skill points`}))})),
     ancestries:c.ancestries.map(a=>({...a,url:`/races/${a.ancestryId}/`})),breakthroughs:c.breakthroughs.map(b=>({...b,url:`/breakthroughs/${b.breakthroughId}/`,body:text(b.description)})),
   };
 }
@@ -311,7 +311,7 @@ function requirementResult(raw,s,build,data,isCreation) {
   // AND binds more tightly than OR, matching the prose's alternate routes.
   const evalClause=part=>{
     const gates=[...part.matchAll(/gate(\d+)z/g)].map(m=>checks[number(m[1])]);
-    const rest=part.replace(/gate\d+z|\band\b|\bplus\b|\bwith\b|\bin\b/g,"").trim();
+    const rest=part.replace(/gate\d+z|\band\b|\bplus\b|\bwith\b|\bin\b|\ba\b|\ban\b/g,"").trim();
     if(rest){unknown=true;return false;}
     return gates.length>0&&gates.every(Boolean);
   };
@@ -321,6 +321,7 @@ function requirementResult(raw,s,build,data,isCreation) {
   return {ok,unknown,text:input};
 }
 export function requirements(record,s,build,data,isCreation=build.cursor===0) {
+  if(record.breakthroughId?.startsWith('large-specimen')){const maleOni=build.ancestry==='oni'&&/male oni/i.test(record.requirements);return {ok:['nio','bullfolk','bearfolk'].includes(build.ancestry),unknown:maleOni,text:maleOni?'Male Oni only: confirm this character qualifies using the prerequisite override.':text(record.requirements)};}
   if(build.mirane&&/angelblooded|shinigami|vampire/i.test(record.classId||record.breakthroughId||record.name))return {ok:false,restricted:true,text:"Mirane: restricted creation / GM-controlled unlock. Not a normal purchase."};
   if(record.classId==='aetherie'&&[...s.abilities].some(id=>data.abilities[id]?.name==='Highly Sensitive to Magic'))return {ok:true,unknown:false,text:'Highly Sensitive to Magic: ignores Aetherie entry requirements; 100 EXP unlock discount.'};
   if(record.classId==="bard")return {ok:number(s.classes.idol?.level)>=8||Object.entries(s.expertise).some(([k,v])=>/^Art: (?:Singing|Idol|.*(?:flute|guitar|piano|violin|lute|harp|drum|instrument|trumpet|cello|clarinet|saxophone|bass|ukulele))$/i.test(k)&&v>=5),unknown:false,text:text(record.requirements)};
@@ -435,6 +436,7 @@ export function evaluateBuild(build,data,until=build.cursor) {
   s.size=text(ancestry?.description).match(/\bSize\s*:\s*(Tiny|Small|Medium|Large|Huge)/i)?.[1]||"Medium";
   for(const e of s.breakthroughs){const n=data.breakthroughs.find(b=>b.indexId===e.id)?.name||"";if(n.startsWith("Large Specimen"))s.size="Large";if(n.startsWith("Small Specimen"))s.size="Small";}
   s.exp=s.earned-s.spent;s.btRemaining=300-s.btSpent;
+  if(data.skyboundTrial&&s.sc>=10000)s.warnings.push('Skybound Trial required: spending past 9,999 SC assumes the trial has been completed. Before passing, at most 1,000 excess EXP may be stored. Confirm trial completion with your GM; this planner does not simulate it.');
   const cap=s.sc>=10000?Infinity:s.sc>=5000?20:15;
   for(const [k,v] of Object.entries({...s.skills,...s.expertise}))if(v>cap)s.errors.push(`${k}: ${v} exceeds the ${cap}-point skill/expertise cap.`);
   s.errors=[...new Set(s.errors)];s.warnings=[...new Set(s.warnings)];
